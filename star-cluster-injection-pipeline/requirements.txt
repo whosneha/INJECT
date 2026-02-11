@@ -1,0 +1,11 @@
+numpy
+scipy
+matplotlib
+pandas
+astropy
+h5py
+scikit-image
+pytest
+jupyter
+seaborn
+```
