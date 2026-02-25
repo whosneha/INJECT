@@ -55,6 +55,14 @@ Examples:
     parser.add_argument('--seed', type=int, default=42, help='Random seed')
     parser.add_argument('--no-noise', action='store_true', help='Disable Poisson noise')
     
+    # Add method argument
+    parser.add_argument('--method', default='smooth', choices=['smooth', 'discrete'],
+                       help='Cluster generation method: smooth (extended source) or discrete (individual stars)')
+    parser.add_argument('--n-stars-min', type=int, default=50, help='Min stars per cluster (discrete mode)')
+    parser.add_argument('--n-stars-max', type=int, default=500, help='Max stars per cluster (discrete mode)')
+    parser.add_argument('--imf', default='kroupa', choices=['kroupa', 'chabrier', 'salpeter'],
+                       help='Initial mass function (discrete mode)')
+    
     # RSP/Butler arguments
     parser.add_argument('--repo', type=str, help='Butler repository path (RSP mode)')
     parser.add_argument('--collection', type=str, help='Butler collection name (RSP mode)')
@@ -127,12 +135,17 @@ Examples:
     
     # ============ CREATE INJECTION CATALOG ============
     print(f"\nCreating catalog with {args.n_clusters} clusters...")
+    print(f"  Method: {args.method}")
+    
     catalog = create_injection_catalog(
         n_clusters=args.n_clusters,
         image_shape=image.shape,
         mag_range=(args.mag_min, args.mag_max),
         r_half_range=(args.r_half_min, args.r_half_max),
         profile_type=args.profile,
+        method=args.method,  # <-- Use the method argument
+        n_stars_range=(args.n_stars_min, args.n_stars_max),
+        imf=args.imf,
         edge_buffer=50,
         seed=args.seed
     )

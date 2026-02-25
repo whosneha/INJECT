@@ -125,7 +125,7 @@ def convolve_with_psf_galsim(image, psf_array, pixel_scale=1.0):
 
 
 def inject_cluster(image, position, profile, psf_fwhm=None, exposure=None, 
-                   add_noise=True, pixel_scale=0.2):
+                   add_noise=True, pixel_scale=0.2, return_stamps=False):
     """
     Inject a synthetic star cluster into an image.
     
@@ -147,6 +147,8 @@ def inject_cluster(image, position, profile, psf_fwhm=None, exposure=None,
         Whether to add Poisson noise
     pixel_scale : float
         Pixel scale in arcsec/pixel (default 0.2 for Rubin)
+    return_stamps : bool
+        If True, also return the intrinsic and convolved stamps
     
     Returns:
     --------
@@ -154,6 +156,12 @@ def inject_cluster(image, position, profile, psf_fwhm=None, exposure=None,
         Image with injected cluster
     cluster_image : ndarray
         The cluster-only image (for diagnostics)
+    stamps : dict (only if return_stamps=True)
+        Dictionary containing:
+        - 'intrinsic': The intrinsic cluster stamp (before PSF)
+        - 'convolved': The PSF-convolved stamp (before noise)
+        - 'final': The final stamp (with noise if added)
+        - 'psf': The PSF used for convolution (if available)
     """
     ny, nx = image.shape
     cy, cx = int(position[0]), int(position[1])
@@ -161,6 +169,8 @@ def inject_cluster(image, position, profile, psf_fwhm=None, exposure=None,
     # Check bounds
     if not (0 <= cx < nx and 0 <= cy < ny):
         print(f"Warning: Position ({cx}, {cy}) outside image. Skipping.")
+        if return_stamps:
+            return image.copy(), np.zeros_like(image), {}
         return image.copy(), np.zeros_like(image)
     
     # Determine stamp size based on cluster size
@@ -168,34 +178,52 @@ def inject_cluster(image, position, profile, psf_fwhm=None, exposure=None,
     half_stamp = stamp_size // 2
     
     # Generate intrinsic cluster model
-    cluster_stamp = profile.generate_2d((stamp_size, stamp_size))
+    intrinsic_stamp = profile.generate_2d((stamp_size, stamp_size))
+    
+    # Store stamps for output
+    stamps = {
+        'intrinsic': intrinsic_stamp.copy(),
+        'position': (cy, cx),
+        'stamp_size': stamp_size,
+        'psf': None,
+        'convolved': None,
+        'final': None
+    }
     
     # Get PSF and convolve
+    cluster_stamp = intrinsic_stamp.copy()
+    
     if exposure is not None and HAS_LSST:
         # Use actual Rubin PSF from the coadd
         pos = Point2D(float(cx), float(cy))
         try:
             psf_array = get_psf_image_at_position(exposure, pos)
+            stamps['psf'] = psf_array.copy()
             cluster_stamp = convolve_with_psf_galsim(cluster_stamp, psf_array, pixel_scale)
         except Exception as e:
             print(f"PSF convolution failed: {e}, using fallback")
             if psf_fwhm is not None:
                 psf_array = _create_gaussian_psf(psf_fwhm, 41)
+                stamps['psf'] = psf_array.copy()
                 cluster_stamp = convolve_with_psf_galsim(cluster_stamp, psf_array, pixel_scale)
     elif psf_fwhm is not None:
         # Use generic Gaussian PSF
         psf_array = _create_gaussian_psf(psf_fwhm, 41)
+        stamps['psf'] = psf_array.copy()
         cluster_stamp = convolve_with_psf_galsim(cluster_stamp, psf_array, pixel_scale)
+    
+    stamps['convolved'] = cluster_stamp.copy()
     
     # Add Poisson noise if requested
     if add_noise and np.any(cluster_stamp > 0):
-        # Only add noise to positive values
         positive_mask = cluster_stamp > 0
         noisy_stamp = cluster_stamp.copy()
         noisy_stamp[positive_mask] = np.random.poisson(
             cluster_stamp[positive_mask].astype(np.float64)
         ).astype(np.float64)
         cluster_stamp = noisy_stamp
+    
+    stamps['final'] = cluster_stamp.copy()
     
     # Calculate insertion bounds
     y_start = max(0, cy - half_stamp)
@@ -221,6 +249,8 @@ def inject_cluster(image, position, profile, psf_fwhm=None, exposure=None,
     cluster_image[y_start:y_end, x_start:x_end] = \
         cluster_stamp[stamp_y_start:stamp_y_end, stamp_x_start:stamp_x_end]
     
+    if return_stamps:
+        return injected_image, cluster_image, stamps
     return injected_image, cluster_image
 
 
@@ -229,16 +259,79 @@ def create_injection_catalog(n_clusters, image_shape,
                              r_half_range=(2, 30),
                              profile_type='plummer',
                              method='smooth',
+                             # Discrete star parameters
                              n_stars_range=(50, 500),
+                             n_stars_fixed=None,
                              imf='kroupa',
                              age_gyr_range=(0.1, 10.0),
+                             age_gyr_fixed=None,
+                             metallicity_range=(0.001, 0.04),
+                             metallicity_fixed=None,
+                             distance_pc_range=(5000, 50000),
+                             distance_pc_fixed=None,
+                             mass_range=(0.1, 100.0),
+                             binary_fraction=0.3,
+                             band='i',
+                             # Other parameters
                              edge_buffer=50,
                              exposure=None,
                              seed=None):
     """
     Create a catalog of clusters to inject.
     
-    ...existing docstring...
+    Parameters:
+    -----------
+    n_clusters : int
+        Number of clusters to inject
+    image_shape : tuple
+        Shape of the target image (ny, nx)
+    mag_range : tuple
+        (min_mag, max_mag) for uniform magnitude distribution
+    r_half_range : tuple
+        (min_r_half, max_r_half) in pixels
+    profile_type : str
+        Type of profile: 'plummer', 'king', 'eff', 'sersic'
+    method : str
+        'smooth' for extended source, 'discrete' for individual stars
+    
+    --- Discrete star parameters ---
+    n_stars_range : tuple
+        (min_stars, max_stars) - randomized per cluster
+    n_stars_fixed : int, optional
+        If set, all clusters have this many stars
+    imf : str
+        Initial mass function: 'kroupa', 'chabrier', 'salpeter'
+    age_gyr_range : tuple
+        (min_age, max_age) in Gyr - randomized per cluster
+    age_gyr_fixed : float, optional
+        If set, all clusters have this age
+    metallicity_range : tuple
+        (min_Z, max_Z) - randomized per cluster (solar=0.02)
+    metallicity_fixed : float, optional
+        If set, all clusters have this metallicity
+    distance_pc_range : tuple
+        (min_dist, max_dist) in parsecs
+    distance_pc_fixed : float, optional
+        If set, all clusters at this distance
+    mass_range : tuple
+        (min_mass, max_mass) stellar mass range in Msun
+    binary_fraction : float
+        Fraction of stars that are binaries (0-1)
+    band : str
+        Photometric band for magnitudes
+    
+    --- Other parameters ---
+    edge_buffer : int
+        Minimum distance from image edges
+    exposure : optional
+        If provided, check PSF validity
+    seed : int, optional
+        Random seed for reproducibility
+    
+    Returns:
+    --------
+    catalog : list of dict
+        List of cluster parameters
     """
     if seed is not None:
         np.random.seed(seed)
@@ -260,10 +353,9 @@ def create_injection_catalog(n_clusters, image_shape,
         if exposure is not None and HAS_LSST:
             pos = Point2D(float(x), float(y))
             try:
-                # Test if PSF can be computed here
                 exposure.getPsf().computeKernelImage(pos)
             except:
-                continue  # Skip invalid positions
+                continue
         
         # Random magnitude (uniform)
         mag = np.random.uniform(*mag_range)
@@ -291,11 +383,52 @@ def create_injection_catalog(n_clusters, image_shape,
         elif profile_type == 'sersic':
             entry['sersic_n'] = np.random.uniform(1, 4)
         
-        # Discrete star parameters
+        # Discrete star parameters - with randomization options
         if method == 'discrete':
-            entry['n_stars'] = np.random.randint(*n_stars_range)
+            # Number of stars
+            if n_stars_fixed is not None:
+                entry['n_stars'] = n_stars_fixed
+            else:
+                entry['n_stars'] = np.random.randint(n_stars_range[0], n_stars_range[1] + 1)
+            
+            # IMF
             entry['imf'] = imf
-            entry['age_gyr'] = np.random.uniform(*age_gyr_range)
+            
+            # Age
+            if age_gyr_fixed is not None:
+                entry['age_gyr'] = age_gyr_fixed
+            else:
+                # Log-uniform distribution for age
+                log_age = np.random.uniform(np.log10(age_gyr_range[0]), 
+                                            np.log10(age_gyr_range[1]))
+                entry['age_gyr'] = 10 ** log_age
+            
+            # Metallicity
+            if metallicity_fixed is not None:
+                entry['metallicity'] = metallicity_fixed
+            else:
+                # Log-uniform distribution for metallicity
+                log_Z = np.random.uniform(np.log10(metallicity_range[0]), 
+                                          np.log10(metallicity_range[1]))
+                entry['metallicity'] = 10 ** log_Z
+            
+            # Distance
+            if distance_pc_fixed is not None:
+                entry['distance_pc'] = distance_pc_fixed
+            else:
+                # Log-uniform distribution for distance
+                log_d = np.random.uniform(np.log10(distance_pc_range[0]), 
+                                          np.log10(distance_pc_range[1]))
+                entry['distance_pc'] = 10 ** log_d
+            
+            # Other discrete parameters
+            entry['mass_min'] = mass_range[0]
+            entry['mass_max'] = mass_range[1]
+            entry['binary_fraction'] = binary_fraction
+            entry['band'] = band
+            
+            # Calculate [Fe/H] for convenience
+            entry['feh'] = np.log10(entry['metallicity'] / 0.02)
         
         catalog.append(entry)
     
@@ -306,10 +439,9 @@ def create_injection_catalog(n_clusters, image_shape,
 
 
 def inject_from_catalog(image, catalog, psf_fwhm=None, exposure=None, 
-                        add_noise=True, pixel_scale=0.2):
+                        add_noise=True, pixel_scale=0.2, save_stamps=False):
     """
     Inject multiple clusters from a catalog.
-    
     ...existing docstring...
     """
     injected_image = image.copy()
@@ -334,7 +466,7 @@ def inject_from_catalog(image, catalog, psf_fwhm=None, exposure=None,
                 gamma=entry.get('gamma', 2.5),
                 sersic_n=entry.get('sersic_n', 2.0)
             )
-        else:
+        else:  # discrete
             profile = create_cluster(
                 method='discrete',
                 n_stars=entry['n_stars'],
@@ -343,23 +475,39 @@ def inject_from_catalog(image, catalog, psf_fwhm=None, exposure=None,
                 profile_type=profile_type,
                 imf=entry.get('imf', 'kroupa'),
                 age_gyr=entry.get('age_gyr', 1.0),
+                metallicity=entry.get('metallicity', 0.02),
                 concentration=entry.get('concentration', 30),
                 gamma=entry.get('gamma', 2.5),
+                distance_pc=entry.get('distance_pc', 10000),
+                band=entry.get('band', 'i'),
+                mass_min=entry.get('mass_min', 0.1),
+                mass_max=entry.get('mass_max', 100.0),
+                binary_fraction=entry.get('binary_fraction', 0.0),
                 seed=entry['id']
             )
         
-        # Inject
+        # Inject with stamp saving
         position = (entry['y'], entry['x'])
-        injected_image, cluster_image = inject_cluster(
+        result = inject_cluster(
             injected_image, position, profile,
             psf_fwhm=psf_fwhm, exposure=exposure,
-            add_noise=add_noise, pixel_scale=pixel_scale
+            add_noise=add_noise, pixel_scale=pixel_scale,
+            return_stamps=save_stamps
         )
+        
+        if save_stamps:
+            injected_image, cluster_image, stamps = result
+        else:
+            injected_image, cluster_image = result
+            stamps = None
         
         # Record info
         info = entry.copy()
         info['total_flux_injected'] = float(np.sum(cluster_image))
         info['peak_brightness'] = float(np.max(cluster_image))
+        
+        if save_stamps and stamps is not None:
+            info['stamps'] = stamps
         
         if method == 'discrete' and isinstance(profile, DiscreteStarCluster):
             info['cluster_properties'] = profile.get_properties()

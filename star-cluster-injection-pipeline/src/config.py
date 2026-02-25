@@ -37,13 +37,42 @@ class ClusterConfig:
     sersic_n_min: float = 1.0  # For Sersic profile
     sersic_n_max: float = 4.0
     
-    # Discrete star parameters
+    # =========================================================================
+    # DISCRETE STAR PARAMETERS
+    # =========================================================================
+    
+    # Number of stars per cluster (can be randomized)
     n_stars_min: int = 50
     n_stars_max: int = 500
+    n_stars_fixed: int = None  # If set, use fixed number instead of random
+    
+    # Initial Mass Function
     imf: str = 'kroupa'  # 'kroupa', 'chabrier', 'salpeter'
+    
+    # Stellar mass range
+    mass_min: float = 0.1  # Minimum stellar mass (Msun)
+    mass_max: float = 100.0  # Maximum stellar mass (Msun)
+    
+    # Age range (Gyr)
     age_gyr_min: float = 0.1
     age_gyr_max: float = 10.0
-    distance_pc: float = 10000.0
+    age_gyr_fixed: float = None  # If set, use fixed age
+    
+    # Metallicity range (Z, solar = 0.02)
+    metallicity_min: float = 0.001  # Very metal-poor
+    metallicity_max: float = 0.04   # Metal-rich
+    metallicity_fixed: float = None  # If set, use fixed metallicity
+    
+    # Distance (parsecs)
+    distance_pc_min: float = 5000
+    distance_pc_max: float = 50000
+    distance_pc_fixed: float = None  # If set, use fixed distance
+    
+    # Binary fraction (0-1)
+    binary_fraction: float = 0.3  # 30% binaries by default
+    
+    # Photometric band for discrete stars
+    band: str = 'i'
 
 
 @dataclass 

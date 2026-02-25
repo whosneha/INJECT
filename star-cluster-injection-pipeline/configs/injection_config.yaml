@@ -45,84 +45,81 @@ cluster_config:
   # ===========================================================================
   # GENERATION METHOD
   # ===========================================================================
-  # 'smooth'   - Treat cluster as smooth extended source
-  #              Uses analytical surface brightness profile
-  #              Convolved with PSF before injection
-  #
-  # 'discrete' - Generate individual stars
-  #              Each star is a point source convolved with PSF
-  #              More realistic for resolved clusters
-  #
-  method: "smooth"
+  method: "discrete"  # 'smooth' or 'discrete'
   
   # ===========================================================================
   # SPATIAL PROFILE
   # ===========================================================================
-  # Profile types supported:
-  #
-  # 'plummer' - Plummer (1911) profile: I(r) ~ (1 + r²/a²)^(-2)
-  # 'king'    - King (1962) tidally truncated profile
-  # 'eff'     - Elson, Fall & Freeman (1987): I(r) ~ (1 + r²/a²)^(-γ/2)
-  # 'sersic'  - Sersic profile with index n
-  #
-  profile_type: "plummer"
+  profile_type: "plummer"  # 'plummer', 'king', 'eff', 'sersic'
   
   # ===========================================================================
   # MAGNITUDE RANGE
   # ===========================================================================
-  # Total integrated magnitude in the specified band
-  # Uses AB magnitude system consistent with Rubin
-  #
   mag_min: 19.0
   mag_max: 25.0
   
   # ===========================================================================
-  # SIZE RANGE (Half-Light Radius)
+  # SIZE RANGE (Half-Light Radius in pixels)
   # ===========================================================================
-  # Half-light radius in PIXELS
-  # Rubin pixel scale: 0.2 arcsec/pixel
-  # 
-  # Examples:
-  #   r_half = 5 px = 1.0 arcsec
-  #   r_half = 25 px = 5.0 arcsec
-  #
-  r_half_min: 2.0    # 0.4 arcsec
-  r_half_max: 30.0   # 6.0 arcsec
+  r_half_min: 2.0
+  r_half_max: 30.0
   
   # ===========================================================================
   # PROFILE-SPECIFIC PARAMETERS
   # ===========================================================================
-  
-  # King profile concentration c = r_tidal / r_core
   concentration_min: 10.0
   concentration_max: 100.0
-  
-  # EFF profile power-law index γ
   gamma_min: 2.2
   gamma_max: 3.5
-  
-  # Sersic index n
   sersic_n_min: 1.0
   sersic_n_max: 4.0
   
   # ===========================================================================
-  # DISCRETE STAR PARAMETERS
+  # DISCRETE STAR PARAMETERS (only used when method='discrete')
   # ===========================================================================
-  # Only used when method='discrete'
   
+  # --- Number of Stars ---
+  # Set n_stars_fixed to use a fixed number, otherwise randomize in range
   n_stars_min: 50
   n_stars_max: 500
+  # n_stars_fixed: 200  # Uncomment to use fixed number
   
-  # Initial Mass Function
-  # 'kroupa'   - Kroupa (2001)
-  # 'chabrier' - Chabrier (2003)  
-  # 'salpeter' - Salpeter (1955)
-  imf: "kroupa"
+  # --- Initial Mass Function ---
+  imf: "kroupa"  # 'kroupa', 'chabrier', 'salpeter'
   
-  age_gyr_min: 0.1
-  age_gyr_max: 10.0
+  # --- Stellar Mass Range (solar masses) ---
+  mass_min: 0.1
+  mass_max: 100.0
   
-  distance_pc: 10000.0
+  # --- Cluster Age (Gyr) ---
+  # Set age_gyr_fixed to use a fixed age, otherwise randomize in range
+  age_gyr_min: 0.1    # 100 Myr
+  age_gyr_max: 13.0   # 13 Gyr (age of universe)
+  # age_gyr_fixed: 5.0  # Uncomment for fixed age
+  
+  # --- Metallicity (Z, solar = 0.02) ---
+  # Set metallicity_fixed to use a fixed value, otherwise randomize in range
+  # Common values:
+  #   0.0001 - extremely metal-poor ([Fe/H] ~ -2.3)
+  #   0.001  - metal-poor ([Fe/H] ~ -1.3)
+  #   0.02   - solar ([Fe/H] = 0)
+  #   0.04   - metal-rich ([Fe/H] ~ +0.3)
+  metallicity_min: 0.001
+  metallicity_max: 0.04
+  # metallicity_fixed: 0.02  # Uncomment for fixed (solar) metallicity
+  
+  # --- Distance (parsecs) ---
+  # Set distance_pc_fixed to use a fixed distance, otherwise randomize
+  distance_pc_min: 5000    # 5 kpc
+  distance_pc_max: 50000   # 50 kpc
+  # distance_pc_fixed: 10000  # Uncomment for fixed distance
+  
+  # --- Binary Fraction ---
+  # Fraction of stars that are unresolved binaries (0-1)
+  binary_fraction: 0.3  # 30% binaries
+  
+  # --- Photometric Band ---
+  band: "i"  # 'u', 'g', 'r', 'i', 'z', 'y'
 
 # -----------------------------------------------------------------------------
 # INJECTION PARAMETERS

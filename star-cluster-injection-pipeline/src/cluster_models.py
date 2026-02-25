@@ -154,18 +154,18 @@ def salpeter_imf(n_stars, m_min=0.1, m_max=100.0, seed=None):
 
 def mass_to_luminosity(mass, age_gyr=1.0, metallicity=0.02):
     """
-    Convert stellar mass to luminosity using simple scaling relations.
+    Convert stellar mass to luminosity using scaling relations.
     
-    For main sequence stars: L ~ M^3.5 (approximate)
+    Includes metallicity and age effects on stellar evolution.
     
     Parameters:
     -----------
     mass : float or ndarray
         Stellar mass in solar masses
     age_gyr : float
-        Cluster age in Gyr (affects evolved stars)
+        Cluster age in Gyr (affects main sequence turnoff and giants)
     metallicity : float
-        Metallicity Z (solar = 0.02)
+        Metallicity Z (solar = 0.02, metal-poor = 0.001, metal-rich = 0.04)
     
     Returns:
     --------
@@ -174,24 +174,57 @@ def mass_to_luminosity(mass, age_gyr=1.0, metallicity=0.02):
     """
     mass = np.asarray(mass)
     
-    # Simple mass-luminosity relation
-    # Low mass: L ~ M^2.3
-    # High mass: L ~ M^3.5
-    luminosity = np.where(mass < 0.5, mass**2.3, mass**3.5)
+    # Base mass-luminosity relation for main sequence
+    # L ~ M^alpha where alpha depends on mass
+    luminosity = np.zeros_like(mass)
     
-    # Age correction (rough approximation for evolved stars)
-    if age_gyr > 1.0:
-        # Massive stars evolve faster
-        turnoff_mass = 10.0 / age_gyr**0.4  # Approximate main sequence turnoff
+    # Very low mass (M < 0.43): L ~ M^2.3
+    mask_vlm = mass < 0.43
+    luminosity[mask_vlm] = 0.23 * mass[mask_vlm]**2.3
+    
+    # Low mass (0.43 < M < 2): L ~ M^4
+    mask_lm = (mass >= 0.43) & (mass < 2)
+    luminosity[mask_lm] = mass[mask_lm]**4
+    
+    # Intermediate mass (2 < M < 55): L ~ 1.4 * M^3.5
+    mask_im = (mass >= 2) & (mass < 55)
+    luminosity[mask_im] = 1.4 * mass[mask_im]**3.5
+    
+    # High mass (M > 55): L ~ 32000 * M
+    mask_hm = mass >= 55
+    luminosity[mask_hm] = 32000 * mass[mask_hm]
+    
+    # Metallicity correction
+    # Metal-poor stars are hotter and more luminous at fixed mass
+    # Metal-rich stars are cooler and less luminous
+    Z_sun = 0.02
+    metallicity_factor = (Z_sun / metallicity)**0.1 if metallicity > 0 else 1.0
+    luminosity *= metallicity_factor
+    
+    # Age correction - main sequence turnoff
+    if age_gyr > 0.01:
+        # Main sequence lifetime: t_MS ~ 10 * (M/Msun)^(-2.5) Gyr
+        # Turnoff mass where t_MS = age
+        turnoff_mass = (10.0 / age_gyr)**(1/2.5)
+        
+        # Stars more massive than turnoff have evolved
         evolved = mass > turnoff_mass
-        luminosity[evolved] *= 10.0  # Giants are brighter
+        
+        if np.any(evolved):
+            # Evolved stars become giants - much more luminous
+            # RGB luminosity can be 100-1000x higher
+            # Simplified model: L_giant ~ 100 * L_MS * (M/M_turnoff)^0.5
+            giant_boost = 100 * (mass[evolved] / turnoff_mass)**0.5
+            # But cap it - very massive stars explode as supernovae
+            giant_boost = np.minimum(giant_boost, 10000)
+            luminosity[evolved] *= giant_boost
     
     return luminosity
 
 
-def luminosity_to_magnitude(luminosity, distance_pc=10.0, band='V'):
+def luminosity_to_magnitude(luminosity, distance_pc=10.0, band='i', metallicity=0.02):
     """
-    Convert luminosity to apparent magnitude.
+    Convert luminosity to apparent magnitude with color corrections.
     
     Parameters:
     -----------
@@ -200,18 +233,39 @@ def luminosity_to_magnitude(luminosity, distance_pc=10.0, band='V'):
     distance_pc : float
         Distance in parsecs
     band : str
-        Photometric band (currently only 'V' implemented properly)
+        Photometric band: 'u', 'g', 'r', 'i', 'z', 'y', 'V'
+    metallicity : float
+        Metallicity Z (affects colors)
     
     Returns:
     --------
     magnitude : float or ndarray
-        Apparent magnitude
+        Apparent magnitude in specified band
     """
-    # Absolute magnitude of Sun in V band
-    M_sun_V = 4.83
+    # Absolute magnitude of Sun in different bands
+    M_sun = {
+        'u': 6.41, 'g': 5.15, 'r': 4.67, 'i': 4.56, 'z': 4.52, 'y': 4.51,
+        'V': 4.83, 'B': 5.48, 'R': 4.42, 'I': 4.14
+    }
+    
+    M_sun_band = M_sun.get(band, 4.83)  # Default to V-band
     
     # Absolute magnitude
-    M = M_sun_V - 2.5 * np.log10(luminosity)
+    M = M_sun_band - 2.5 * np.log10(np.maximum(luminosity, 1e-10))
+    
+    # Metallicity color correction (simplified)
+    # Metal-poor stars are bluer, metal-rich are redder
+    Z_sun = 0.02
+    if band in ['u', 'g', 'B']:
+        # Blue bands: metal-poor stars are brighter
+        color_corr = -0.5 * np.log10(metallicity / Z_sun) if metallicity > 0 else 0
+    elif band in ['i', 'z', 'y', 'I']:
+        # Red bands: metal-rich stars are brighter
+        color_corr = 0.3 * np.log10(metallicity / Z_sun) if metallicity > 0 else 0
+    else:
+        color_corr = 0
+    
+    M += color_corr
     
     # Distance modulus
     dm = 5 * np.log10(distance_pc / 10.0)
@@ -366,11 +420,15 @@ class DiscreteStarCluster:
     Generate a star cluster as a collection of discrete stars.
     
     Each star has a position, mass, luminosity, and magnitude.
+    Supports metallicity, age, and various IMFs.
     """
     
     def __init__(self, n_stars, r_half, total_magnitude=None, total_flux=None,
                  profile_type='plummer', imf='kroupa', age_gyr=1.0,
-                 concentration=30, gamma=2.5, distance_pc=10000,
+                 metallicity=0.02, concentration=30, gamma=2.5, 
+                 distance_pc=10000, band='i',
+                 mass_min=0.1, mass_max=100.0,
+                 binary_fraction=0.0,
                  seed=None):
         """
         Initialize a discrete star cluster.
@@ -390,13 +448,23 @@ class DiscreteStarCluster:
         imf : str
             Initial mass function: 'kroupa', 'chabrier', 'salpeter'
         age_gyr : float
-            Cluster age in Gyr
+            Cluster age in Gyr (affects stellar evolution)
+        metallicity : float
+            Metallicity Z (solar=0.02, metal-poor~0.001, metal-rich~0.04)
         concentration : float
             Concentration parameter for King profile (c = r_t / r_c)
         gamma : float
             Power law index for EFF profile
         distance_pc : float
             Distance in parsecs (for magnitude calculation)
+        band : str
+            Photometric band for magnitudes: 'u','g','r','i','z','y'
+        mass_min : float
+            Minimum stellar mass in solar masses
+        mass_max : float
+            Maximum stellar mass in solar masses
+        binary_fraction : float
+            Fraction of stars that are unresolved binaries (0-1)
         seed : int, optional
             Random seed for reproducibility
         """
@@ -405,9 +473,14 @@ class DiscreteStarCluster:
         self.profile_type = profile_type
         self.imf_type = imf
         self.age_gyr = age_gyr
+        self.metallicity = metallicity
         self.concentration = concentration
         self.gamma = gamma
         self.distance_pc = distance_pc
+        self.band = band
+        self.mass_min = mass_min
+        self.mass_max = mass_max
+        self.binary_fraction = binary_fraction
         self.seed = seed
         
         # Generate stars
@@ -421,15 +494,30 @@ class DiscreteStarCluster:
     
     def _generate_stars(self):
         """Generate star positions, masses, and luminosities."""
+        if self.seed is not None:
+            np.random.seed(self.seed)
+        
         # Generate masses from IMF
         if self.imf_type == 'kroupa':
-            self.masses = kroupa_imf(self.n_stars, seed=self.seed)
+            self.masses = kroupa_imf(self.n_stars, self.mass_min, self.mass_max, seed=self.seed)
         elif self.imf_type == 'chabrier':
-            self.masses = chabrier_imf(self.n_stars, seed=self.seed)
+            self.masses = chabrier_imf(self.n_stars, self.mass_min, self.mass_max, seed=self.seed)
         elif self.imf_type == 'salpeter':
-            self.masses = salpeter_imf(self.n_stars, seed=self.seed)
+            self.masses = salpeter_imf(self.n_stars, self.mass_min, self.mass_max, seed=self.seed)
         else:
             raise ValueError(f"Unknown IMF: {self.imf_type}")
+        
+        # Handle binaries - combine flux of two stars
+        if self.binary_fraction > 0:
+            n_binaries = int(self.n_stars * self.binary_fraction)
+            binary_indices = np.random.choice(self.n_stars, n_binaries, replace=False)
+            # Add a secondary star's mass (draw from same IMF, but favor similar masses)
+            secondary_masses = self.masses[binary_indices] * np.random.uniform(0.3, 1.0, n_binaries)
+            self.masses[binary_indices] += secondary_masses
+            self.is_binary = np.zeros(self.n_stars, dtype=bool)
+            self.is_binary[binary_indices] = True
+        else:
+            self.is_binary = np.zeros(self.n_stars, dtype=bool)
         
         # Generate positions
         if self.profile_type == 'plummer':
@@ -437,14 +525,12 @@ class DiscreteStarCluster:
                 self.n_stars, self.r_half, seed=self.seed
             )
         elif self.profile_type == 'king':
-            # Convert r_half to r_c for King profile
             r_c = self.r_half / (np.sqrt(self.concentration) * 0.5)
             r_t = r_c * self.concentration
             self.radii, self.angles = king_positions(
                 self.n_stars, r_c, r_t, seed=self.seed
             )
         elif self.profile_type == 'eff':
-            # Convert r_half to scale radius for EFF
             a = self.r_half / np.sqrt(2**(2/(self.gamma - 2)) - 1)
             self.radii, self.angles = eff_positions(
                 self.n_stars, a, self.gamma, seed=self.seed
@@ -456,16 +542,18 @@ class DiscreteStarCluster:
         self.x_offset = self.radii * np.cos(self.angles)
         self.y_offset = self.radii * np.sin(self.angles)
         
-        # Calculate luminosities
-        self.luminosities = mass_to_luminosity(self.masses, self.age_gyr)
-        
-        # Calculate magnitudes
-        self.magnitudes = luminosity_to_magnitude(
-            self.luminosities, self.distance_pc
+        # Calculate luminosities with age and metallicity
+        self.luminosities = mass_to_luminosity(
+            self.masses, self.age_gyr, self.metallicity
         )
         
-        # Calculate fluxes
-        self.fluxes = 10**((27.0 - self.magnitudes) / 2.5)  # Arbitrary zero point
+        # Calculate magnitudes in specified band
+        self.magnitudes = luminosity_to_magnitude(
+            self.luminosities, self.distance_pc, self.band, self.metallicity
+        )
+        
+        # Calculate fluxes from magnitudes
+        self.fluxes = 10**((27.0 - self.magnitudes) / 2.5)
     
     def scale_to_magnitude(self, total_magnitude):
         """Scale all star fluxes to achieve a target total magnitude."""
@@ -558,8 +646,14 @@ class DiscreteStarCluster:
             'profile_type': self.profile_type,
             'imf': self.imf_type,
             'age_gyr': self.age_gyr,
+            'metallicity': self.metallicity,
+            'metallicity_feh': np.log10(self.metallicity / 0.02) if self.metallicity > 0 else -99,
+            'distance_pc': self.distance_pc,
+            'band': self.band,
+            'binary_fraction': self.binary_fraction,
             'total_magnitude': getattr(self, 'total_magnitude', None),
             'total_flux': getattr(self, 'total_flux', np.sum(self.fluxes)),
+            'total_mass': np.sum(self.masses),
             'mass_range': (self.masses.min(), self.masses.max()),
             'mag_range': (self.magnitudes.min(), self.magnitudes.max()),
         }
@@ -579,43 +673,32 @@ def create_cluster(method='smooth', **kwargs):
         'smooth' for extended source profile, 'discrete' for individual stars
     
     For method='smooth':
-        r_half : float
-            Half-light radius in pixels
-        profile_type : str
-            'plummer', 'king', 'eff', 'sersic'
-        magnitude : float, optional
-            Total magnitude
-        central_brightness : float, optional
-            Central surface brightness (if magnitude not given)
-        age : float
-            Age in Gyr
-        concentration : float
-            For King profile
-        gamma : float
-            For EFF profile
-        sersic_n : float
-            For Sersic profile
+        r_half : float - Half-light radius in pixels
+        profile_type : str - 'plummer', 'king', 'eff', 'sersic'
+        magnitude : float, optional - Total magnitude
+        central_brightness : float, optional - Central surface brightness
+        age : float - Age in Gyr
+        concentration : float - For King profile
+        gamma : float - For EFF profile
+        sersic_n : float - For Sersic profile
     
     For method='discrete':
-        n_stars : int
-            Number of stars
-        r_half : float
-            Half-light radius
-        total_magnitude : float, optional
-            Total magnitude
-        profile_type : str
-            'plummer', 'king', 'eff'
-        imf : str
-            'kroupa', 'chabrier', 'salpeter'
-        age_gyr : float
-            Age in Gyr
-        seed : int, optional
-            Random seed
+        n_stars : int - Number of stars
+        r_half : float - Half-light radius
+        total_magnitude : float, optional - Total magnitude
+        profile_type : str - 'plummer', 'king', 'eff'
+        imf : str - 'kroupa', 'chabrier', 'salpeter'
+        age_gyr : float - Age in Gyr
+        metallicity : float - Metallicity Z (solar=0.02)
+        distance_pc : float - Distance in parsecs
+        band : str - Photometric band
+        binary_fraction : float - Fraction of binaries (0-1)
+        seed : int, optional - Random seed
     
     Returns:
     --------
     cluster : object
-        Cluster model (PlummerProfile/KingProfile/etc. or DiscreteStarCluster)
+        Cluster model
     """
     if method == 'smooth':
         profile_type = kwargs.get('profile_type', 'plummer')
@@ -662,9 +745,14 @@ def create_cluster(method='smooth', **kwargs):
             profile_type=kwargs.get('profile_type', 'plummer'),
             imf=kwargs.get('imf', 'kroupa'),
             age_gyr=kwargs.get('age_gyr', 1.0),
+            metallicity=kwargs.get('metallicity', 0.02),
             concentration=kwargs.get('concentration', 30),
             gamma=kwargs.get('gamma', 2.5),
             distance_pc=kwargs.get('distance_pc', 10000),
+            band=kwargs.get('band', 'i'),
+            mass_min=kwargs.get('mass_min', 0.1),
+            mass_max=kwargs.get('mass_max', 100.0),
+            binary_fraction=kwargs.get('binary_fraction', 0.0),
             seed=kwargs.get('seed')
         )
     
