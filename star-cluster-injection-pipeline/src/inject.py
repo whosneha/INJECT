@@ -1,9 +1,14 @@
 """
 Main injection module for star cluster injection pipeline.
+
+Supports two cluster generation methods:
+1. Smooth: Extended source with analytical profile
+2. Discrete: Individual stars with positions and magnitudes
 """
 
 import numpy as np
 from .light_profiles import PlummerProfile, KingProfile, EFFProfile, SersicProfile
+from .cluster_models import create_cluster, DiscreteStarCluster
 from .psf_convolution import convolve_with_psf, HAS_GALSIM
 
 try:
@@ -26,7 +31,7 @@ def inject_cluster(image, position, profile, psf_fwhm=None, exposure=None, add_n
     position : tuple
         (y, x) pixel position for cluster center
     profile : object
-        Light profile object (PlummerProfile, KingProfile, etc.)
+        Light profile object (PlummerProfile, KingProfile, etc.) or DiscreteStarCluster
     psf_fwhm : float, optional
         PSF FWHM in pixels (for generic PSF convolution)
     exposure : lsst.afw.image.ExposureF, optional
@@ -62,7 +67,6 @@ def inject_cluster(image, position, profile, psf_fwhm=None, exposure=None, add_n
     
     # Add Poisson noise if requested
     if add_noise and np.any(cluster_stamp > 0):
-        # Poisson noise: variance = signal
         noise = np.random.poisson(np.maximum(cluster_stamp, 0).astype(int)).astype(float)
         cluster_stamp = noise
     
@@ -93,29 +97,13 @@ def inject_cluster(image, position, profile, psf_fwhm=None, exposure=None, add_n
     return injected_image, cluster_image
 
 
-def prepare_injection(image, profile):
-    """
-    Prepare an image for injection (placeholder for any preprocessing).
-    
-    Parameters:
-    -----------
-    image : ndarray
-        Input image
-    profile : object
-        Light profile object
-    
-    Returns:
-    --------
-    prepared_image : ndarray
-        Prepared image (currently just returns a copy)
-    """
-    return image.copy()
-
-
 def create_injection_catalog(n_clusters, image_shape, 
                              mag_range=(18, 25), 
                              r_half_range=(2, 30),
                              profile_type='plummer',
+                             method='smooth',
+                             n_stars_range=(50, 500),
+                             imf='kroupa',
                              edge_buffer=50,
                              seed=None):
     """
@@ -133,6 +121,12 @@ def create_injection_catalog(n_clusters, image_shape,
         (min_r_half, max_r_half) in pixels
     profile_type : str
         Type of profile: 'plummer', 'king', 'eff', 'sersic'
+    method : str
+        'smooth' for extended source, 'discrete' for individual stars
+    n_stars_range : tuple
+        (min_stars, max_stars) for discrete method
+    imf : str
+        Initial mass function for discrete method: 'kroupa', 'chabrier', 'salpeter'
     edge_buffer : int
         Minimum distance from image edges
     seed : int, optional
@@ -169,6 +163,7 @@ def create_injection_catalog(n_clusters, image_shape,
             'magnitude': mag,
             'r_half': r_half,
             'profile_type': profile_type,
+            'method': method,
         }
         
         # Add profile-specific parameters
@@ -178,6 +173,12 @@ def create_injection_catalog(n_clusters, image_shape,
             entry['gamma'] = np.random.uniform(2.2, 3.5)
         elif profile_type == 'sersic':
             entry['sersic_n'] = np.random.uniform(1, 4)
+        
+        # Add discrete star parameters
+        if method == 'discrete':
+            entry['n_stars'] = np.random.randint(*n_stars_range)
+            entry['imf'] = imf
+            entry['age_gyr'] = np.random.uniform(0.1, 10.0)
         
         catalog.append(entry)
     
@@ -212,38 +213,35 @@ def inject_from_catalog(image, catalog, psf_fwhm=None, exposure=None, add_noise=
     injection_info = []
     
     for entry in catalog:
-        # Create the appropriate profile
+        # Determine method
+        method = entry.get('method', 'smooth')
         profile_type = entry.get('profile_type', 'plummer')
         
-        if profile_type == 'plummer':
-            profile = PlummerProfile(
+        # Create the cluster model
+        if method == 'smooth':
+            profile = create_cluster(
+                method='smooth',
+                profile_type=profile_type,
                 r_half=entry['r_half'],
-                age=1.0,
-                magnitude=entry['magnitude']
-            )
-        elif profile_type == 'king':
-            profile = KingProfile(
-                r_half=entry['r_half'],
+                magnitude=entry['magnitude'],
+                age=entry.get('age_gyr', 1.0),
                 concentration=entry.get('concentration', 30),
-                age=1.0,
-                magnitude=entry['magnitude']
-            )
-        elif profile_type == 'eff':
-            profile = EFFProfile(
-                r_half=entry['r_half'],
                 gamma=entry.get('gamma', 2.5),
-                age=1.0,
-                magnitude=entry['magnitude']
+                sersic_n=entry.get('sersic_n', 2.0)
             )
-        elif profile_type == 'sersic':
-            profile = SersicProfile(
+        else:  # discrete
+            profile = create_cluster(
+                method='discrete',
+                n_stars=entry['n_stars'],
                 r_half=entry['r_half'],
-                sersic_n=entry.get('sersic_n', 2),
-                age=1.0,
-                magnitude=entry['magnitude']
+                total_magnitude=entry['magnitude'],
+                profile_type=profile_type,
+                imf=entry.get('imf', 'kroupa'),
+                age_gyr=entry.get('age_gyr', 1.0),
+                concentration=entry.get('concentration', 30),
+                gamma=entry.get('gamma', 2.5),
+                seed=entry['id']  # Use ID as seed for reproducibility
             )
-        else:
-            raise ValueError(f"Unknown profile type: {profile_type}")
         
         # Inject the cluster
         position = (entry['y'], entry['x'])
@@ -256,6 +254,18 @@ def inject_from_catalog(image, catalog, psf_fwhm=None, exposure=None, add_noise=
         info = entry.copy()
         info['total_flux_injected'] = np.sum(cluster_image)
         info['peak_brightness'] = np.max(cluster_image)
+        
+        # Add discrete star info if applicable
+        if method == 'discrete' and isinstance(profile, DiscreteStarCluster):
+            info['star_catalog'] = profile.get_star_catalog(center=(entry['y'], entry['x']))
+            info['cluster_properties'] = profile.get_properties()
+        
         injection_info.append(info)
     
     return injected_image, injection_info
+
+
+# Legacy function aliases
+def prepare_injection(image, profile):
+    """Prepare an image for injection (placeholder)."""
+    return image.copy()
