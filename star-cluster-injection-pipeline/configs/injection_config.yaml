@@ -1,0 +1,152 @@
+# =============================================================================
+# STAR CLUSTER INJECTION PIPELINE - CONFIGURATION FILE
+# =============================================================================
+# 
+# This pipeline follows the Rubin source injection methodology:
+# https://pipelines.lsst.io/modules/lsst.source.injection/
+#
+# Key features:
+# - Uses actual PSF from coadd exposures (spatially varying)
+# - Proper flux calibration using zeropoint
+# - GalSim-based convolution for accuracy
+#
+# Usage:
+#   from src.config import InjectionConfig
+#   config = InjectionConfig.from_yaml('configs/my_config.yaml')
+#
+
+# -----------------------------------------------------------------------------
+# RUN IDENTIFICATION
+# -----------------------------------------------------------------------------
+run_name: "my_injection_run"
+description: "Star cluster injection following Rubin tutorial methodology"
+
+# -----------------------------------------------------------------------------
+# DATA SOURCE (RSP Butler)
+# -----------------------------------------------------------------------------
+# Configure for your specific data access
+# See: https://pipelines.lsst.io/modules/lsst.daf.butler/
+repo: "dp02"
+collection: "2.2i/runs/DP0.2"
+tract: 4431
+patch: 17
+band: "i"  # Options: u, g, r, i, z, y
+
+# -----------------------------------------------------------------------------
+# NUMBER OF CLUSTERS
+# -----------------------------------------------------------------------------
+n_clusters: 100
+
+# -----------------------------------------------------------------------------
+# CLUSTER CONFIGURATION
+# -----------------------------------------------------------------------------
+cluster_config:
+  
+  # ===========================================================================
+  # GENERATION METHOD
+  # ===========================================================================
+  # 'smooth'   - Treat cluster as smooth extended source
+  #              Uses analytical surface brightness profile
+  #              Convolved with PSF before injection
+  #
+  # 'discrete' - Generate individual stars
+  #              Each star is a point source convolved with PSF
+  #              More realistic for resolved clusters
+  #
+  method: "smooth"
+  
+  # ===========================================================================
+  # SPATIAL PROFILE
+  # ===========================================================================
+  # Profile types supported:
+  #
+  # 'plummer' - Plummer (1911) profile: I(r) ~ (1 + r²/a²)^(-2)
+  # 'king'    - King (1962) tidally truncated profile
+  # 'eff'     - Elson, Fall & Freeman (1987): I(r) ~ (1 + r²/a²)^(-γ/2)
+  # 'sersic'  - Sersic profile with index n
+  #
+  profile_type: "plummer"
+  
+  # ===========================================================================
+  # MAGNITUDE RANGE
+  # ===========================================================================
+  # Total integrated magnitude in the specified band
+  # Uses AB magnitude system consistent with Rubin
+  #
+  mag_min: 19.0
+  mag_max: 25.0
+  
+  # ===========================================================================
+  # SIZE RANGE (Half-Light Radius)
+  # ===========================================================================
+  # Half-light radius in PIXELS
+  # Rubin pixel scale: 0.2 arcsec/pixel
+  # 
+  # Examples:
+  #   r_half = 5 px = 1.0 arcsec
+  #   r_half = 25 px = 5.0 arcsec
+  #
+  r_half_min: 2.0    # 0.4 arcsec
+  r_half_max: 30.0   # 6.0 arcsec
+  
+  # ===========================================================================
+  # PROFILE-SPECIFIC PARAMETERS
+  # ===========================================================================
+  
+  # King profile concentration c = r_tidal / r_core
+  concentration_min: 10.0
+  concentration_max: 100.0
+  
+  # EFF profile power-law index γ
+  gamma_min: 2.2
+  gamma_max: 3.5
+  
+  # Sersic index n
+  sersic_n_min: 1.0
+  sersic_n_max: 4.0
+  
+  # ===========================================================================
+  # DISCRETE STAR PARAMETERS
+  # ===========================================================================
+  # Only used when method='discrete'
+  
+  n_stars_min: 50
+  n_stars_max: 500
+  
+  # Initial Mass Function
+  # 'kroupa'   - Kroupa (2001)
+  # 'chabrier' - Chabrier (2003)  
+  # 'salpeter' - Salpeter (1955)
+  imf: "kroupa"
+  
+  age_gyr_min: 0.1
+  age_gyr_max: 10.0
+  
+  distance_pc: 10000.0
+
+# -----------------------------------------------------------------------------
+# INJECTION PARAMETERS
+# -----------------------------------------------------------------------------
+
+# Buffer from image edges (pixels)
+edge_buffer: 100
+
+# Add Poisson noise to injected sources
+add_noise: true
+
+# Use actual PSF from coadd (recommended)
+# If false, uses generic Moffat PSF with FWHM=0.7"
+use_actual_psf: true
+
+# Pixel scale (arcsec/pixel) - Rubin default is 0.2
+pixel_scale: 0.2
+
+# Random seed for reproducibility
+seed: 42
+
+# -----------------------------------------------------------------------------
+# OUTPUT OPTIONS
+# -----------------------------------------------------------------------------
+save_injected_image: true
+save_catalog: true
+output_dir: "./injection_output"
