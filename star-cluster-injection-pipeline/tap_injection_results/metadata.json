@@ -1,0 +1,12 @@
+{
+  "ra": 55.0,
+  "dec": -30.0,
+  "band": "i",
+  "image_shape": [
+    500,
+    500
+  ],
+  "psf_fwhm_pixels": 3.5,
+  "n_clusters": 10,
+  "mode": "mock"
+}

@@ -1,0 +1,102 @@
+[
+  {
+    "id": 0,
+    "x": 465,
+    "y": 132,
+    "magnitude": 22.85214291922975,
+    "r_half": 9.744578609310869,
+    "profile_type": "plummer",
+    "total_flux_injected": 0.0,
+    "peak_brightness": 0.0
+  },
+  {
+    "id": 1,
+    "x": 50,
+    "y": 218,
+    "magnitude": 20.46805592132731,
+    "r_half": 3.8561750936790413,
+    "profile_type": "plummer",
+    "total_flux_injected": 143.0,
+    "peak_brightness": 5.0
+  },
+  {
+    "id": 2,
+    "x": 117,
+    "y": 360,
+    "magnitude": 21.001125833417067,
+    "r_half": 3.7755556422156356,
+    "profile_type": "plummer",
+    "total_flux_injected": 45.0,
+    "peak_brightness": 4.0
+  },
+  {
+    "id": 3,
+    "x": 179,
+    "y": 160,
+    "magnitude": 20.1692347370813,
+    "r_half": 9.589075535858269,
+    "profile_type": "plummer",
+    "total_flux_injected": 0.0,
+    "peak_brightness": 0.0
+  },
+  {
+    "id": 4,
+    "x": 323,
+    "y": 443,
+    "magnitude": 20.002336297523044,
+    "r_half": 14.813148364000863,
+    "profile_type": "plummer",
+    "total_flux_injected": 0.0,
+    "peak_brightness": 0.0
+  },
+  {
+    "id": 5,
+    "x": 343,
+    "y": 190,
+    "magnitude": 21.574269294896713,
+    "r_half": 6.012261562962468,
+    "profile_type": "plummer",
+    "total_flux_injected": 0.0,
+    "peak_brightness": 0.0
+  },
+  {
+    "id": 6,
+    "x": 88,
+    "y": 78,
+    "magnitude": 21.199582915145765,
+    "r_half": 3.2339935808335243,
+    "profile_type": "plummer",
+    "total_flux_injected": 51.0,
+    "peak_brightness": 5.0
+  },
+  {
+    "id": 7,
+    "x": 300,
+    "y": 217,
+    "magnitude": 21.368209952651107,
+    "r_half": 10.615383778576549,
+    "profile_type": "plummer",
+    "total_flux_injected": 0.0,
+    "peak_brightness": 0.0
+  },
+  {
+    "id": 8,
+    "x": 393,
+    "y": 80,
+    "magnitude": 21.542703315240836,
+    "r_half": 7.7839720616338886,
+    "profile_type": "plummer",
+    "total_flux_injected": 0.0,
+    "peak_brightness": 0.0
+  },
+  {
+    "id": 9,
+    "x": 336,
+    "y": 160,
+    "magnitude": 22.04092261576334,
+    "r_half": 6.19450658313056,
+    "profile_type": "plummer",
+    "total_flux_injected": 0.0,
+    "peak_brightness": 0.0
+  }
+]

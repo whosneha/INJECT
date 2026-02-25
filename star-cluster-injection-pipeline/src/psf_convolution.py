@@ -1,5 +1,6 @@
 """
 PSF convolution module using GalSim for realistic Rubin-like PSF modeling.
+Supports both generic PSFs and actual Rubin coadd PSFs.
 """
 
 import numpy as np
@@ -9,6 +10,139 @@ try:
     HAS_GALSIM = True
 except ImportError:
     HAS_GALSIM = False
+
+# Check for LSST stack (only available on RSP)
+try:
+    from lsst.afw.image import Image as afwImage
+    from lsst.afw.math import Warper
+    HAS_LSST = True
+except ImportError:
+    HAS_LSST = False
+
+
+def get_psf_from_coadd(exposure, position):
+    """
+    Extract the PSF from a Rubin coadd at a specific position.
+    
+    This must be run on the Rubin Science Platform where the LSST stack is available.
+    
+    Parameters:
+    -----------
+    exposure : lsst.afw.image.ExposureF
+        The coadd exposure from Butler
+    position : lsst.geom.Point2D
+        Position in pixel coordinates where to evaluate the PSF
+    
+    Returns:
+    --------
+    psf_image : ndarray
+        2D PSF image at the specified position
+    """
+    if not HAS_LSST:
+        raise RuntimeError("LSST stack not available. Run this on the Rubin Science Platform.")
+    
+    # Get the PSF model from the exposure
+    psf_model = exposure.getPsf()
+    
+    # Compute the PSF image at the given position
+    psf_image = psf_model.computeImage(position)
+    
+    # Convert to numpy array
+    psf_array = psf_image.array.copy()
+    
+    # Normalize to sum to 1
+    psf_array = psf_array / np.sum(psf_array)
+    
+    return psf_array
+
+
+def get_psf_fwhm_from_coadd(exposure, position):
+    """
+    Get the PSF FWHM from a Rubin coadd at a specific position.
+    
+    Parameters:
+    -----------
+    exposure : lsst.afw.image.ExposureF
+        The coadd exposure
+    position : lsst.geom.Point2D
+        Position in pixel coordinates
+    
+    Returns:
+    --------
+    fwhm : float
+        PSF FWHM in pixels
+    """
+    if not HAS_LSST:
+        raise RuntimeError("LSST stack not available. Run this on the Rubin Science Platform.")
+    
+    psf_model = exposure.getPsf()
+    shape = psf_model.computeShape(position)
+    
+    # Convert second moments to FWHM
+    # FWHM ≈ 2.355 * sigma, and sigma = sqrt(trace/2) for circular PSF
+    sigma = np.sqrt(shape.getTraceRadius())
+    fwhm = 2.355 * sigma
+    
+    return fwhm
+
+
+def convolve_with_coadd_psf(image, exposure, position):
+    """
+    Convolve an image with the actual PSF from a Rubin coadd.
+    
+    Parameters:
+    -----------
+    image : ndarray
+        Input 2D image to convolve
+    exposure : lsst.afw.image.ExposureF
+        The coadd exposure containing the PSF model
+    position : lsst.geom.Point2D
+        Position where to evaluate the PSF
+    
+    Returns:
+    --------
+    convolved : ndarray
+        Convolved image
+    """
+    # Get the actual PSF at this position
+    psf_array = get_psf_from_coadd(exposure, position)
+    
+    # Use GalSim for the convolution
+    if HAS_GALSIM:
+        return _convolve_galsim_with_psf_image(image, psf_array)
+    else:
+        return _convolve_fft(image, psf_array)
+
+
+def _convolve_galsim_with_psf_image(image, psf_array):
+    """Convolve using GalSim with a PSF image array."""
+    ny, nx = image.shape
+    pixel_scale = 1.0
+    
+    # Create GalSim objects
+    gal_image = galsim.Image(image, scale=pixel_scale)
+    psf_image = galsim.Image(psf_array, scale=pixel_scale)
+    
+    intrinsic = galsim.InterpolatedImage(gal_image, scale=pixel_scale)
+    psf = galsim.InterpolatedImage(psf_image, scale=pixel_scale)
+    
+    # Convolve
+    convolved = galsim.Convolve([intrinsic, psf])
+    
+    # Draw result
+    result_image = galsim.Image(nx, ny, scale=pixel_scale)
+    convolved.drawImage(image=result_image, scale=pixel_scale)
+    
+    return result_image.array
+
+
+def _convolve_fft(image, psf_array):
+    """Convolve using FFT (fallback method)."""
+    from scipy.signal import fftconvolve
+    
+    # Pad PSF to avoid edge effects
+    convolved = fftconvolve(image, psf_array, mode='same')
+    return convolved
 
 
 def create_rubin_psf(fwhm_pixels, shape, pixel_scale=1.0):
