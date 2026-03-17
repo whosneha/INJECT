@@ -1,7 +1,11 @@
 """
 PSF convolution module following Rubin Observatory practices.
 
-Reference: https://pipelines.lsst.io/modules/lsst.source.injection/
+Reference: DP02_12a_PSF_Data_Products tutorial
+https://dp0-2.lsst.io/_static/nb_html/DP02_12a_PSF_Data_Products.html
+
+Uses calexp (single-visit) exposures whose PSF is a simple analytical model
+accessible via exposure.getPsf().computeImage() / computeShape().
 """
 
 import numpy as np
@@ -16,17 +20,7 @@ try:
     from lsst.afw.image import Image as afwImage
     from lsst.geom import Point2D
     HAS_LSST = True
-    
-    # Import the PSF error type
-    try:
-        from lsst.meas.algorithms import CoaddPsf
-        from lsst.pex.exceptions import InvalidParameterError
-        HAS_LSST = True
-    except (ImportError, AttributeError, Exception):
-        CoaddPsf = None
-        InvalidParameterError = Exception
-        HAS_LSST = False
-except ImportError:
+except (ImportError, AttributeError, Exception):
     HAS_LSST = False
 
 
