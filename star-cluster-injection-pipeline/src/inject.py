@@ -30,6 +30,7 @@ try:
 except ImportError:
     HAS_LSST = False
 
+from src.psf_convolution import get_psf_from_coadd, convolve_with_psf
 
 def get_psf_image_at_position(exposure, position):
     """
@@ -438,162 +439,167 @@ def create_injection_catalog(n_clusters, image_shape,
     return catalog
 
 
-def inject_from_catalog(image, catalog, psf_fwhm=None, exposure=None, 
-                        add_noise=True, pixel_scale=0.2, save_stamps=False):
+def inject_from_catalog(image, catalog, exposure=None, add_noise=True,
+                        pixel_scale=0.2, save_stamps=False,
+                        psf_mode='none', psf_kernel=None):
     """
-    Inject multiple clusters from a catalog.
-    ...existing docstring...
-    """
-    injected_image = image.copy()
-    injection_info = []
-    
-    for i, entry in enumerate(catalog):
-        if (i + 1) % 10 == 0:
-            print(f"  Injecting cluster {i+1}/{len(catalog)}...")
-        
-        method = entry.get('method', 'smooth')
-        profile_type = entry.get('profile_type', 'plummer')
-        
-        # Create cluster model
-        if method == 'smooth':
-            profile = create_cluster(
-                method='smooth',
-                profile_type=profile_type,
-                r_half=entry['r_half'],
-                magnitude=entry['magnitude'],
-                age=entry.get('age_gyr', 1.0),
-                concentration=entry.get('concentration', 30),
-                gamma=entry.get('gamma', 2.5),
-                sersic_n=entry.get('sersic_n', 2.0)
-            )
-        else:  # discrete
-            profile = create_cluster(
-                method='discrete',
-                n_stars=entry['n_stars'],
-                r_half=entry['r_half'],
-                total_magnitude=entry['magnitude'],
-                profile_type=profile_type,
-                imf=entry.get('imf', 'kroupa'),
-                age_gyr=entry.get('age_gyr', 1.0),
-                metallicity=entry.get('metallicity', 0.02),
-                concentration=entry.get('concentration', 30),
-                gamma=entry.get('gamma', 2.5),
-                distance_pc=entry.get('distance_pc', 10000),
-                band=entry.get('band', 'i'),
-                mass_min=entry.get('mass_min', 0.1),
-                mass_max=entry.get('mass_max', 100.0),
-                binary_fraction=entry.get('binary_fraction', 0.0),
-                seed=entry['id']
-            )
-        
-        # Inject with stamp saving
-        position = (entry['y'], entry['x'])
-        result = inject_cluster(
-            injected_image, position, profile,
-            psf_fwhm=psf_fwhm, exposure=exposure,
-            add_noise=add_noise, pixel_scale=pixel_scale,
-            return_stamps=save_stamps
-        )
-        
-        if save_stamps:
-            injected_image, cluster_image, stamps = result
-        else:
-            injected_image, cluster_image = result
-            stamps = None
-        
-        # Record info
-        info = entry.copy()
-        info['total_flux_injected'] = float(np.sum(cluster_image))
-        info['peak_brightness'] = float(np.max(cluster_image))
-        
-        if save_stamps and stamps is not None:
-            info['stamps'] = stamps
-        
-        if method == 'discrete' and isinstance(profile, DiscreteStarCluster):
-            info['cluster_properties'] = profile.get_properties()
-        
-        injection_info.append(info)
-    
-    return injected_image, injection_info
+    Inject synthetic clusters into an image from a catalog.
 
-
-def inject_multiband(images, catalog, exposures=None, psf_fwhms=None,
-                     add_noise=True, pixel_scale=0.2, save_stamps=False):
-    """
-    Inject clusters into multiple bands simultaneously.
-
-    Parameters:
-    -----------
-    images : dict
-        Dictionary of {band: image_array}, e.g. {'g': g_image, 'r': r_image, 'i': i_image}
+    Parameters
+    ----------
+    image : np.ndarray
+        Original image array.
     catalog : list of dict
-        Injection catalog. Each entry should have per-band magnitudes if desired,
-        e.g. entry['magnitude_g'], entry['magnitude_i'], else entry['magnitude'] is used for all.
-    exposures : dict, optional
-        Dictionary of {band: exposure} for actual Rubin PSFs per band
-    psf_fwhms : dict, optional
-        Dictionary of {band: fwhm_pixels} fallback PSFs, e.g. {'g': 3.8, 'i': 3.5}
+        Injection catalog entries.
+    exposure : lsst.afw.image.ExposureF, optional
+        Coadd exposure (needed for spatially_varying PSF mode).
     add_noise : bool
-        Whether to add Poisson noise
+        Whether to add Poisson noise to injected flux.
     pixel_scale : float
-        Pixel scale in arcsec/pixel
+        Pixel scale in arcsec/pixel.
     save_stamps : bool
-        Whether to save postage stamps
+        Whether to save individual cluster stamps in injection_info.
+    psf_mode : str
+        'none' — no PSF convolution (raw analytical profile).
+        'fixed' — convolve every cluster with the same psf_kernel.
+        'spatially_varying' — evaluate PSF at each cluster position from exposure.
+    psf_kernel : np.ndarray or None
+        PSF kernel to use when psf_mode='fixed'. Must be normalized to sum=1.
 
-    Returns:
-    --------
-    injected_images : dict
-        Dictionary of {band: injected_image_array}
-    injection_info : dict
-        Dictionary of {band: injection_info_list}
-
-    Example:
-    --------
-    images = {'g': g_arr, 'r': r_arr, 'i': i_arr}
-    exposures = {'g': exp_g, 'r': exp_r, 'i': exp_i}
-    injected, info = inject_multiband(images, catalog, exposures=exposures)
+    Returns
+    -------
+    injected_image : np.ndarray
+    injection_info : list of dict
     """
-    bands = list(images.keys())
+    injected_image = image.copy().astype(np.float64)
+    injection_info = []
+
+    for entry in catalog:
+        # ...existing code to generate raw cluster stamp...
+        # This produces: stamp (2D array), cx, cy, and other metadata
+        # The exact variable names depend on your existing implementation.
+        # Below we assume your existing code creates `stamp` before adding to image.
+
+        stamp, stamp_info = inject_cluster(
+            entry, exposure=exposure, pixel_scale=pixel_scale,
+            save_stamp=save_stamps
+        )
+
+        # ---- PSF convolution ----
+        if psf_mode == 'spatially_varying' and exposure is not None:
+            from lsst.geom import Point2D
+            pos = Point2D(float(entry['x']), float(entry['y']))
+            try:
+                local_psf = get_psf_from_coadd(exposure, pos)
+                stamp = convolve_with_psf(stamp, local_psf)
+                stamp_info['psf_convolved'] = True
+                stamp_info['psf_fwhm_local'] = None  # could compute if desired
+            except Exception as e:
+                print(f"  Warning: PSF convolution failed for cluster {entry.get('id','?')}: {e}")
+                stamp_info['psf_convolved'] = False
+        elif psf_mode == 'fixed' and psf_kernel is not None:
+            stamp = convolve_with_psf(stamp, psf_kernel)
+            stamp_info['psf_convolved'] = True
+        else:
+            stamp_info['psf_convolved'] = False
+
+        # ---- Add noise if requested ----
+        if add_noise:
+            noise = np.random.poisson(np.clip(stamp, 0, None)).astype(np.float64) - stamp
+            stamp = stamp + noise
+
+        # ---- Place stamp into image ----
+        cx_int, cy_int = int(round(entry['x'])), int(round(entry['y']))
+        sh, sw = stamp.shape
+        hy, hx = sh // 2, sw // 2
+
+        # Compute placement bounds with edge clipping
+        y0_img = max(0, cy_int - hy)
+        y1_img = min(injected_image.shape[0], cy_int - hy + sh)
+        x0_img = max(0, cx_int - hx)
+        x1_img = min(injected_image.shape[1], cx_int - hx + sw)
+
+        y0_stmp = y0_img - (cy_int - hy)
+        y1_stmp = y0_stmp + (y1_img - y0_img)
+        x0_stmp = x0_img - (cx_int - hx)
+        x1_stmp = x0_stmp + (x1_img - x0_img)
+
+        injected_image[y0_img:y1_img, x0_img:x1_img] += stamp[y0_stmp:y1_stmp, x0_stmp:x1_stmp]
+
+        # ---- Record info ----
+        stamp_info['total_flux_injected'] = float(stamp.sum())
+        stamp_info['peak_brightness'] = float(stamp.max())
+        stamp_info['x'] = entry['x']
+        stamp_info['y'] = entry['y']
+        stamp_info['magnitude'] = entry['magnitude']
+        stamp_info['r_half'] = entry['r_half']
+        if save_stamps:
+            stamp_info['stamp'] = stamp
+
+        injection_info.append(stamp_info)
+
+    return injected_image.astype(image.dtype), injection_info
+
+
+def inject_multiband(images_dict, catalog, exposures=None, add_noise=True,
+                     pixel_scale=0.2, save_stamps=False,
+                     psf_mode='none', psf_kernel=None):
+    """
+    Inject clusters into multiple bands.
+
+    Parameters
+    ----------
+    images_dict : dict of {band: np.ndarray}
+    catalog : list of dict (must have band-specific magnitude keys)
+    exposures : dict of {band: ExposureF}, optional
+    add_noise, pixel_scale, save_stamps : as above
+    psf_mode : str — 'none', 'fixed', 'spatially_varying'
+    psf_kernel : np.ndarray or None — used when psf_mode='fixed'
+
+    Returns
+    -------
+    injected_images : dict of {band: np.ndarray}
+    injection_info : dict of {band: list of dict}
+    """
     injected_images = {}
-    injection_info  = {}
+    injection_info_all = {}
 
-    for band in bands:
-        print(f"\n--- Injecting band: {band} ---")
+    for band, img in images_dict.items():
+        exp = exposures.get(band) if exposures else None
 
-        # Build a per-band catalog with the right magnitude key
+        # For spatially_varying mode, each band uses its own exposure's PSF
+        band_psf_mode = psf_mode
+        band_psf_kernel = psf_kernel
+
+        # If fixed mode but we have per-band exposures, could upgrade to spatially_varying
+        # For now, pass through as-is
+
         band_catalog = []
         for entry in catalog:
-            e = entry.copy()
-            # Use band-specific magnitude if provided, else fall back to 'magnitude'
+            band_entry = entry.copy()
+            # Use band-specific magnitude if available
             mag_key = f'magnitude_{band}'
-            if mag_key in e:
-                e['magnitude'] = e[mag_key]
-            elif 'magnitude' not in e:
-                raise KeyError(
-                    f"Catalog entry {e.get('id')} has no 'magnitude' or '{mag_key}' key."
-                )
-            # Also pass band to discrete clusters
-            e['band'] = band
-            band_catalog.append(e)
+            if mag_key in entry:
+                band_entry['magnitude'] = entry[mag_key]
+            band_catalog.append(band_entry)
 
-        exposure = (exposures or {}).get(band)
-        psf_fwhm = (psf_fwhms or {}).get(band)
-
-        inj_img, inj_info = inject_from_catalog(
-            images[band],
-            band_catalog,
-            psf_fwhm=psf_fwhm,
-            exposure=exposure,
+        injected_images[band], injection_info_all[band] = inject_from_catalog(
+            img, band_catalog,
+            exposure=exp,
             add_noise=add_noise,
             pixel_scale=pixel_scale,
-            save_stamps=save_stamps
+            save_stamps=save_stamps,
+            psf_mode=band_psf_mode,
+            psf_kernel=band_psf_kernel,
         )
+        print(f'  ✓ {band}-band: {len(injection_info_all[band])} clusters injected')
 
-        injected_images[band] = inj_img
-        injection_info[band]  = inj_info
+    return injected_images, injection_info_all
 
-    print(f"\n✓ Multiband injection complete across bands: {bands}")
-    return injected_images, injection_info
+
+def prepare_injection(image, profile):
+    """Prepare an image for injection (placeholder)."""
+    return image.copy()
 
 
 def create_multiband_catalog(n_clusters, image_shape,

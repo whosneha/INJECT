@@ -1,299 +1,178 @@
 """
-PSF convolution module following Rubin Observatory practices.
+PSF extraction and convolution utilities for Rubin coadd images.
 
-Reference: DP02_12a_PSF_Data_Products tutorial
-https://dp0-2.lsst.io/_static/nb_html/DP02_12a_PSF_Data_Products.html
-
-Uses calexp (single-visit) exposures whose PSF is a simple analytical model
-accessible via exposure.getPsf().computeImage() / computeShape().
+The deepCoadd PSF is spatially varying — you must evaluate it at a specific
+pixel position using exposure.getPsf().computeImage(Point2D(x, y)).
 """
 
 import numpy as np
-
-try:
-    import galsim
-    HAS_GALSIM = True
-except ImportError:
-    HAS_GALSIM = False
-
-try:
-    from lsst.afw.image import Image as afwImage
-    from lsst.geom import Point2D
-    HAS_LSST = True
-except (ImportError, AttributeError, Exception):
-    HAS_LSST = False
+from scipy.signal import fftconvolve
 
 
-def get_psf_from_coadd(exposure, position, fallback_fwhm=3.5):
+def get_psf_from_coadd(exposure, position):
     """
-    Extract PSF from a Rubin coadd at a specific position.
+    Extract the PSF kernel image from a Rubin deepCoadd at a given position.
 
-    Following DP02_12a_PSF_Data_Products tutorial:
-      psf = calexp.getPsf()
-      psfImg = psf.computeImage(coord)   # PSF image centered at 'coord'
-      array = psfImg.array / psfImg.array.sum()
-
-    Parameters:
-    -----------
+    Parameters
+    ----------
     exposure : lsst.afw.image.ExposureF
+        The deepCoadd exposure loaded via Butler.
     position : lsst.geom.Point2D
-    fallback_fwhm : float
+        Pixel position at which to evaluate the PSF.
 
-    Returns:
-    --------
-    psf_array : ndarray  (normalized)
+    Returns
+    -------
+    psf_array : np.ndarray
+        2D PSF kernel image, normalized to sum=1.
     """
-    if not HAS_LSST:
-        return _gaussian_psf(fallback_fwhm, (41, 41))
+    psf_obj = exposure.getPsf()
+    if psf_obj is None:
+        raise RuntimeError("Exposure has no PSF model attached.")
 
-    psf = exposure.getPsf()
+    # computeImage returns an afw Image at the given position
+    psf_image = psf_obj.computeImage(position)
+    psf_array = psf_image.array.copy().astype(np.float64)
 
-    try:
-        # computeImage returns a PSF image centered at the given pixel position
-        # (this is what the DP0.2 PSF tutorial uses)
-        psf_image = psf.computeImage(position)
-        psf_array = psf_image.array.copy()
+    # Normalize so the PSF sums to 1 (flux-preserving convolution)
+    total = psf_array.sum()
+    if total > 0:
+        psf_array /= total
 
-    except Exception as e:
-        print(f"Warning: PSF unavailable at ({position.getX():.0f}, {position.getY():.0f}): {e}")
-
-        valid_pos = _find_valid_psf_position(exposure, position)
-        if valid_pos is not None:
-            print(f"  Using PSF from ({valid_pos.getX():.0f}, {valid_pos.getY():.0f})")
-            psf_image = psf.computeImage(valid_pos)
-            psf_array = psf_image.array.copy()
-        else:
-            print(f"  Using fallback Gaussian (FWHM={fallback_fwhm})")
-            return _gaussian_psf(fallback_fwhm, (41, 41))
-
-    # Normalize (tutorial: array / array.sum())
-    psf_array = psf_array / np.sum(psf_array)
     return psf_array
 
 
-def _find_valid_psf_position(exposure, position, max_radius=200):
-    """Search for a nearby position where PSF can be computed."""
-    if not HAS_LSST:
-        return None
-
-    psf = exposure.getPsf()
-    x, y = position.getX(), position.getY()
-
-    for radius in range(10, max_radius, 20):
-        for angle in np.linspace(0, 2*np.pi, 8, endpoint=False):
-            test_x = x + radius * np.cos(angle)
-            test_y = y + radius * np.sin(angle)
-            test_pos = Point2D(test_x, test_y)
-            try:
-                psf.computeImage(test_pos)
-                return test_pos
-            except:
-                continue
-
-    return None
-
-
-def get_psf_fwhm_from_coadd(exposure, position, fallback_fwhm=3.5):
+def get_psf_fwhm_from_coadd(exposure, position):
     """
-    Get PSF FWHM at a position.
+    Compute the PSF FWHM in pixels from a Rubin deepCoadd at a given position.
 
-    Following DP02_12a_PSF_Data_Products tutorial:
-      shape = psf.computeShape(coord)
-      sigma = shape.getDeterminantRadius()   # <-- tutorial uses getDeterminantRadius
-      fwhm  = sigma * 2 * sqrt(2 * ln(2))   # = sigma * 2.355
+    Uses computeShape() which returns adaptive moments (Ixx, Iyy, Ixy).
+    FWHM ≈ 2.355 * sigma, where sigma = sqrt((Ixx + Iyy) / 2).
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     exposure : lsst.afw.image.ExposureF
     position : lsst.geom.Point2D
-    fallback_fwhm : float
 
-    Returns:
-    --------
-    fwhm : float  (pixels)
-    """
-    if not HAS_LSST:
-        return fallback_fwhm
-
-    try:
-        psf = exposure.getPsf()
-        shape = psf.computeShape(position)
-        # getDeterminantRadius = (Ixx*Iyy - Ixy^2)^(1/4), the correct
-        # effective sigma for a 2-D Gaussian (used in the DP0.2 PSF tutorial)
-        sigma = shape.getDeterminantRadius()
-        fwhm  = sigma * 2.0 * np.sqrt(2.0 * np.log(2.0))   # ≈ 2.355 * sigma
-        return float(fwhm)
-    except Exception as e:
-        print(f"Warning: could not compute PSF FWHM: {e}")
-        return fallback_fwhm
-
-
-def convolve_with_coadd_psf(image, exposure, position, fallback_fwhm=3.5):
-    """
-    Convolve image with actual PSF from coadd.
-    
-    Parameters:
-    -----------
-    image : ndarray
-        Input image
-    exposure : lsst.afw.image.ExposureF
-        Coadd exposure
-    position : lsst.geom.Point2D
-        Position for PSF evaluation
-    fallback_fwhm : float
-        Fallback FWHM if PSF unavailable
-    
-    Returns:
-    --------
-    convolved : ndarray
-        Convolved image
-    """
-    psf_array = get_psf_from_coadd(exposure, position, fallback_fwhm)
-    
-    if HAS_GALSIM:
-        return _convolve_galsim(image, psf_array)
-    else:
-        return _convolve_fft(image, psf_array)
-
-
-def _convolve_galsim(image, psf_array):
-    """Convolve using GalSim."""
-    ny, nx = image.shape
-    pixel_scale = 1.0
-    
-    gal_image = galsim.Image(image, scale=pixel_scale)
-    psf_image = galsim.Image(psf_array, scale=pixel_scale)
-    
-    source = galsim.InterpolatedImage(gal_image, scale=pixel_scale)
-    psf = galsim.InterpolatedImage(psf_image, scale=pixel_scale)
-    
-    convolved = galsim.Convolve([source, psf])
-    
-    result = galsim.Image(nx, ny, scale=pixel_scale)
-    convolved.drawImage(image=result, scale=pixel_scale)
-    
-    return result.array
-
-
-def _convolve_fft(image, psf_array):
-    """Convolve using FFT."""
-    from scipy.signal import fftconvolve
-    return fftconvolve(image, psf_array, mode='same')
-
-
-def _gaussian_psf(fwhm, shape):
-    """Create Gaussian PSF."""
-    ny, nx = shape
-    sigma = fwhm / 2.355
-    y, x = np.ogrid[:ny, :nx]
-    cy, cx = ny // 2, nx // 2
-    r2 = (x - cx)**2 + (y - cy)**2
-    psf = np.exp(-r2 / (2 * sigma**2))
-    return psf / np.sum(psf)
-
-
-def convolve_with_psf(image, fwhm, psf_type='moffat', beta=4.765):
-    """
-    Convolve with a generic PSF model.
-    
-    Parameters:
-    -----------
-    image : ndarray
-        Input image
-    fwhm : float
-        PSF FWHM in pixels
-    psf_type : str
-        'moffat', 'gaussian', or 'kolmogorov'
-    beta : float
-        Moffat beta parameter
-    
-    Returns:
-    --------
-    convolved : ndarray
-        Convolved image
-    """
-    if not HAS_GALSIM:
-        from scipy.ndimage import gaussian_filter
-        sigma = fwhm / 2.355
-        return gaussian_filter(image, sigma=sigma)
-    
-    ny, nx = image.shape
-    pixel_scale = 1.0
-    
-    if psf_type == 'moffat':
-        psf = galsim.Moffat(fwhm=fwhm, beta=beta)
-    elif psf_type == 'gaussian':
-        psf = galsim.Gaussian(fwhm=fwhm)
-    elif psf_type == 'kolmogorov':
-        psf = galsim.Kolmogorov(fwhm=fwhm)
-    else:
-        raise ValueError(f"Unknown PSF type: {psf_type}")
-    
-    gal_image = galsim.Image(image, scale=pixel_scale)
-    source = galsim.InterpolatedImage(gal_image, scale=pixel_scale)
-    
-    convolved = galsim.Convolve([source, psf])
-    
-    result = galsim.Image(nx, ny, scale=pixel_scale)
-    convolved.drawImage(image=result, scale=pixel_scale)
-    
-    return result.array
-
-
-def create_rubin_psf(fwhm_pixels, shape, pixel_scale=1.0):
-    """
-    Create a Rubin-like PSF (Moffat profile).
-    
-    Parameters:
-    -----------
+    Returns
+    -------
     fwhm_pixels : float
-        FWHM in pixels
-    shape : tuple
-        Output shape (ny, nx)
-    pixel_scale : float
-        Pixel scale
-    
-    Returns:
-    --------
-    psf : ndarray
-        Normalized PSF image
     """
-    if not HAS_GALSIM:
-        return _gaussian_psf(fwhm_pixels, shape)
-    
-    ny, nx = shape
-    psf = galsim.Moffat(fwhm=fwhm_pixels, beta=4.765)
-    
-    psf_image = galsim.Image(nx, ny, scale=pixel_scale)
-    psf.drawImage(image=psf_image, scale=pixel_scale)
-    
-    psf_array = psf_image.array
-    return psf_array / np.sum(psf_array)
+    psf_obj = exposure.getPsf()
+    if psf_obj is None:
+        raise RuntimeError("Exposure has no PSF model attached.")
+
+    shape = psf_obj.computeShape(position)
+    # Adaptive second moments
+    ixx = shape.getIxx()
+    iyy = shape.getIyy()
+    sigma = np.sqrt((ixx + iyy) / 2.0)
+    fwhm = 2.355 * sigma
+    return fwhm
 
 
-# Backwards compatibility
-def is_position_valid_for_psf(exposure, position):
-    """Check if PSF can be computed at position."""
-    if not HAS_LSST:
-        return True
-    try:
-        exposure.getPsf().computeKernelImage(position)
-        return True
-    except:
-        return False
+def get_psf_size_from_coadd(exposure, position):
+    """
+    Return detailed PSF shape information at a position.
+
+    Returns
+    -------
+    info : dict with keys 'fwhm_px', 'fwhm_arcsec', 'sigma_px',
+           'ixx', 'iyy', 'ixy', 'ellipticity', 'kernel_shape'
+    """
+    psf_obj = exposure.getPsf()
+    shape = psf_obj.computeShape(position)
+    psf_image = psf_obj.computeImage(position)
+
+    ixx = shape.getIxx()
+    iyy = shape.getIyy()
+    ixy = shape.getIxy()
+    sigma = np.sqrt((ixx + iyy) / 2.0)
+    fwhm_px = 2.355 * sigma
+
+    # Ellipticity from moments
+    e1 = (ixx - iyy) / (ixx + iyy) if (ixx + iyy) > 0 else 0.0
+    e2 = 2.0 * ixy / (ixx + iyy) if (ixx + iyy) > 0 else 0.0
+    ellipticity = np.sqrt(e1**2 + e2**2)
+
+    return {
+        'fwhm_px': fwhm_px,
+        'fwhm_arcsec': fwhm_px * 0.2,  # Rubin pixel scale
+        'sigma_px': sigma,
+        'ixx': ixx,
+        'iyy': iyy,
+        'ixy': ixy,
+        'ellipticity': ellipticity,
+        'kernel_shape': psf_image.array.shape,
+    }
 
 
-def get_valid_psf_region(exposure):
-    """Get approximate valid region for PSF computation."""
-    if not HAS_LSST:
-        return None
-    
-    from lsst.geom import Box2I, Point2I, Extent2I
-    
-    bbox = exposure.getBBox()
-    margin = 100
-    
-    return Box2I(
-        Point2I(bbox.getMinX() + margin, bbox.getMinY() + margin),
-        Extent2I(bbox.getWidth() - 2*margin, bbox.getHeight() - 2*margin)
-    )
+def convolve_with_psf(cluster_stamp, psf_kernel, mode='same'):
+    """
+    Convolve a 2D cluster stamp with a PSF kernel using FFT convolution.
+
+    Parameters
+    ----------
+    cluster_stamp : np.ndarray
+        2D array of the synthetic cluster (before PSF smearing).
+    psf_kernel : np.ndarray
+        2D PSF kernel (should be normalized to sum=1).
+    mode : str
+        'same' to return array of same shape as cluster_stamp.
+
+    Returns
+    -------
+    convolved : np.ndarray
+    """
+    # Ensure both are float64 for precision
+    stamp = np.asarray(cluster_stamp, dtype=np.float64)
+    kernel = np.asarray(psf_kernel, dtype=np.float64)
+
+    # Re-normalize kernel just in case
+    ksum = kernel.sum()
+    if ksum > 0:
+        kernel = kernel / ksum
+
+    convolved = fftconvolve(stamp, kernel, mode=mode)
+    return convolved
+
+
+def sample_psf_across_image(exposure, n_samples=9):
+    """
+    Sample the PSF at a grid of positions across the image to show
+    spatial variation. Useful for diagnostics.
+
+    Parameters
+    ----------
+    exposure : lsst.afw.image.ExposureF
+    n_samples : int
+        Total number of sample points (will be sqrt(n) x sqrt(n) grid).
+
+    Returns
+    -------
+    samples : list of dict, each with 'x', 'y', 'fwhm_px', 'psf_array'
+    """
+    from lsst.geom import Point2D
+
+    ny, nx = exposure.image.array.shape
+    n_side = int(np.ceil(np.sqrt(n_samples)))
+    margin = 100  # stay away from edges
+
+    xs = np.linspace(margin, nx - margin, n_side)
+    ys = np.linspace(margin, ny - margin, n_side)
+
+    samples = []
+    for y in ys:
+        for x in xs:
+            pos = Point2D(float(x), float(y))
+            try:
+                psf_arr = get_psf_from_coadd(exposure, pos)
+                fwhm = get_psf_fwhm_from_coadd(exposure, pos)
+                samples.append({
+                    'x': float(x), 'y': float(y),
+                    'fwhm_px': fwhm,
+                    'psf_array': psf_arr,
+                })
+            except Exception as e:
+                print(f"  PSF sample failed at ({x:.0f}, {y:.0f}): {e}")
+
+    return samples
