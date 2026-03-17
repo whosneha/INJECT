@@ -517,6 +517,161 @@ def inject_from_catalog(image, catalog, psf_fwhm=None, exposure=None,
     return injected_image, injection_info
 
 
+def inject_multiband(images, catalog, exposures=None, psf_fwhms=None,
+                     add_noise=True, pixel_scale=0.2, save_stamps=False):
+    """
+    Inject clusters into multiple bands simultaneously.
+
+    Parameters:
+    -----------
+    images : dict
+        Dictionary of {band: image_array}, e.g. {'g': g_image, 'r': r_image, 'i': i_image}
+    catalog : list of dict
+        Injection catalog. Each entry should have per-band magnitudes if desired,
+        e.g. entry['magnitude_g'], entry['magnitude_i'], else entry['magnitude'] is used for all.
+    exposures : dict, optional
+        Dictionary of {band: exposure} for actual Rubin PSFs per band
+    psf_fwhms : dict, optional
+        Dictionary of {band: fwhm_pixels} fallback PSFs, e.g. {'g': 3.8, 'i': 3.5}
+    add_noise : bool
+        Whether to add Poisson noise
+    pixel_scale : float
+        Pixel scale in arcsec/pixel
+    save_stamps : bool
+        Whether to save postage stamps
+
+    Returns:
+    --------
+    injected_images : dict
+        Dictionary of {band: injected_image_array}
+    injection_info : dict
+        Dictionary of {band: injection_info_list}
+
+    Example:
+    --------
+    images = {'g': g_arr, 'r': r_arr, 'i': i_arr}
+    exposures = {'g': exp_g, 'r': exp_r, 'i': exp_i}
+    injected, info = inject_multiband(images, catalog, exposures=exposures)
+    """
+    bands = list(images.keys())
+    injected_images = {}
+    injection_info  = {}
+
+    for band in bands:
+        print(f"\n--- Injecting band: {band} ---")
+
+        # Build a per-band catalog with the right magnitude key
+        band_catalog = []
+        for entry in catalog:
+            e = entry.copy()
+            # Use band-specific magnitude if provided, else fall back to 'magnitude'
+            mag_key = f'magnitude_{band}'
+            if mag_key in e:
+                e['magnitude'] = e[mag_key]
+            elif 'magnitude' not in e:
+                raise KeyError(
+                    f"Catalog entry {e.get('id')} has no 'magnitude' or '{mag_key}' key."
+                )
+            # Also pass band to discrete clusters
+            e['band'] = band
+            band_catalog.append(e)
+
+        exposure = (exposures or {}).get(band)
+        psf_fwhm = (psf_fwhms or {}).get(band)
+
+        inj_img, inj_info = inject_from_catalog(
+            images[band],
+            band_catalog,
+            psf_fwhm=psf_fwhm,
+            exposure=exposure,
+            add_noise=add_noise,
+            pixel_scale=pixel_scale,
+            save_stamps=save_stamps
+        )
+
+        injected_images[band] = inj_img
+        injection_info[band]  = inj_info
+
+    print(f"\n✓ Multiband injection complete across bands: {bands}")
+    return injected_images, injection_info
+
+
+def create_multiband_catalog(n_clusters, image_shape,
+                             bands=('g', 'r', 'i'),
+                             mag_ranges=None,
+                             r_half_range=(2, 30),
+                             profile_type='plummer',
+                             method='smooth',
+                             edge_buffer=50,
+                             exposure=None,
+                             seed=None):
+    """
+    Create one positional catalog shared across all bands,
+    with per-band magnitudes drawn independently.
+
+    Parameters:
+    -----------
+    n_clusters : int
+        Number of clusters
+    image_shape : tuple
+        (ny, nx) of image
+    bands : tuple of str
+        Bands to generate magnitudes for, e.g. ('g', 'r', 'i')
+    mag_ranges : dict, optional
+        Per-band magnitude ranges, e.g. {'g': (19, 26), 'r': (19, 25), 'i': (18, 25)}.
+        If None, uses (19, 25) for all bands.
+    r_half_range : tuple
+        Half-light radius range in pixels (same for all bands)
+    profile_type : str
+        Spatial profile type (same for all bands)
+    method : str
+        'smooth' or 'discrete'
+    edge_buffer : int
+        Minimum distance from image edges
+    exposure : optional
+        Exposure for PSF validity check (single band)
+    seed : int, optional
+        Random seed
+
+    Returns:
+    --------
+    catalog : list of dict
+        Catalog with 'magnitude_<band>' keys for each band,
+        plus shared spatial parameters (x, y, r_half, profile_type, method)
+    """
+    if mag_ranges is None:
+        mag_ranges = {b: (19.0, 25.0) for b in bands}
+
+    # Generate base catalog for positions and sizes (use first band for PSF check)
+    base_catalog = create_injection_catalog(
+        n_clusters=n_clusters,
+        image_shape=image_shape,
+        mag_range=mag_ranges.get(bands[0], (19, 25)),
+        r_half_range=r_half_range,
+        profile_type=profile_type,
+        method=method,
+        edge_buffer=edge_buffer,
+        exposure=exposure,
+        seed=seed
+    )
+
+    # Add per-band magnitudes
+    if seed is not None:
+        np.random.seed(seed + 99)
+
+    for entry in base_catalog:
+        for band in bands:
+            lo, hi = mag_ranges.get(band, (19, 25))
+            entry[f'magnitude_{band}'] = np.random.uniform(lo, hi)
+
+    print(f"✓ Multiband catalog: {len(base_catalog)} clusters × {len(bands)} bands")
+    for band in bands:
+        mags = [e[f'magnitude_{band}'] for e in base_catalog]
+        print(f"  {band}: mag range [{min(mags):.1f}, {max(mags):.1f}]")
+
+    return base_catalog
+
+
 # Legacy function aliases
 def prepare_injection(image, profile):
     """Prepare an image for injection (placeholder)."""

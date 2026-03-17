@@ -45,7 +45,11 @@ cluster_config:
   # ===========================================================================
   # GENERATION METHOD
   # ===========================================================================
-  method: "discrete"  # 'smooth' or 'discrete'
+  # smooth  = one 2D integrated light profile per cluster (extended source)
+  #           -> no individual stars, just an analytical surface brightness map
+  # discrete = each cluster is N individual point-source stars placed by IMF
+  #           -> each star is a delta function convolved with the PSF
+  method: "smooth"   # <-- 'smooth' recommended for distant/unresolved clusters
   
   # ===========================================================================
   # SPATIAL PROFILE
@@ -120,6 +124,30 @@ cluster_config:
   
   # --- Photometric Band ---
   band: "i"  # 'u', 'g', 'r', 'i', 'z', 'y'
+
+# -----------------------------------------------------------------------------
+# MULTI-BAND INJECTION
+# -----------------------------------------------------------------------------
+# Set multiband: true to inject into multiple bands in one run.
+# Each band uses the same positions/sizes but independent magnitudes.
+multiband: false
+
+bands:
+  - name: "g"
+    mag_min: 19.5
+    mag_max: 26.0
+    collection: "2.2i/runs/DP0.2"   # Can override per band if needed
+  - name: "r"
+    mag_min: 19.0
+    mag_max: 25.5
+    collection: "2.2i/runs/DP0.2"
+  - name: "i"
+    mag_min: 18.5
+    mag_max: 25.0
+    collection: "2.2i/runs/DP0.2"
+
+# If multiband: false, only the single band below is used
+band: "i"
 
 # -----------------------------------------------------------------------------
 # INJECTION PARAMETERS
