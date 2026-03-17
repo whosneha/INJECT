@@ -21,8 +21,11 @@ try:
     try:
         from lsst.meas.algorithms import CoaddPsf
         from lsst.pex.exceptions import InvalidParameterError
-    except ImportError:
-        pass
+        HAS_LSST = True
+    except (ImportError, AttributeError, Exception):
+        CoaddPsf = None
+        InvalidParameterError = Exception
+        HAS_LSST = False
 except ImportError:
     HAS_LSST = False
 
@@ -30,47 +33,46 @@ except ImportError:
 def get_psf_from_coadd(exposure, position, fallback_fwhm=3.5):
     """
     Extract PSF from a Rubin coadd at a specific position.
-    
-    Following the Rubin source injection tutorial approach.
-    
+
+    Following DP02_12a_PSF_Data_Products tutorial:
+      psf = calexp.getPsf()
+      psfImg = psf.computeImage(coord)   # PSF image centered at 'coord'
+      array = psfImg.array / psfImg.array.sum()
+
     Parameters:
     -----------
     exposure : lsst.afw.image.ExposureF
-        The coadd exposure
     position : lsst.geom.Point2D
-        Position in pixel coordinates
     fallback_fwhm : float
-        FWHM for fallback Gaussian if PSF unavailable
-    
+
     Returns:
     --------
-    psf_array : ndarray
-        Normalized PSF image
+    psf_array : ndarray  (normalized)
     """
     if not HAS_LSST:
         return _gaussian_psf(fallback_fwhm, (41, 41))
-    
+
     psf = exposure.getPsf()
-    
+
     try:
-        # computeKernelImage returns the PSF image at the position
-        psf_image = psf.computeKernelImage(position)
+        # computeImage returns a PSF image centered at the given pixel position
+        # (this is what the DP0.2 PSF tutorial uses)
+        psf_image = psf.computeImage(position)
         psf_array = psf_image.array.copy()
-        
+
     except Exception as e:
         print(f"Warning: PSF unavailable at ({position.getX():.0f}, {position.getY():.0f}): {e}")
-        
-        # Try to find a nearby valid position
+
         valid_pos = _find_valid_psf_position(exposure, position)
         if valid_pos is not None:
             print(f"  Using PSF from ({valid_pos.getX():.0f}, {valid_pos.getY():.0f})")
-            psf_image = psf.computeKernelImage(valid_pos)
+            psf_image = psf.computeImage(valid_pos)
             psf_array = psf_image.array.copy()
         else:
             print(f"  Using fallback Gaussian (FWHM={fallback_fwhm})")
             return _gaussian_psf(fallback_fwhm, (41, 41))
-    
-    # Normalize
+
+    # Normalize (tutorial: array / array.sum())
     psf_array = psf_array / np.sum(psf_array)
     return psf_array
 
@@ -79,54 +81,56 @@ def _find_valid_psf_position(exposure, position, max_radius=200):
     """Search for a nearby position where PSF can be computed."""
     if not HAS_LSST:
         return None
-    
+
     psf = exposure.getPsf()
     x, y = position.getX(), position.getY()
-    
+
     for radius in range(10, max_radius, 20):
         for angle in np.linspace(0, 2*np.pi, 8, endpoint=False):
             test_x = x + radius * np.cos(angle)
             test_y = y + radius * np.sin(angle)
             test_pos = Point2D(test_x, test_y)
-            
             try:
-                psf.computeKernelImage(test_pos)
+                psf.computeImage(test_pos)
                 return test_pos
             except:
                 continue
-    
+
     return None
 
 
 def get_psf_fwhm_from_coadd(exposure, position, fallback_fwhm=3.5):
     """
     Get PSF FWHM at a position.
-    
+
+    Following DP02_12a_PSF_Data_Products tutorial:
+      shape = psf.computeShape(coord)
+      sigma = shape.getDeterminantRadius()   # <-- tutorial uses getDeterminantRadius
+      fwhm  = sigma * 2 * sqrt(2 * ln(2))   # = sigma * 2.355
+
     Parameters:
     -----------
     exposure : lsst.afw.image.ExposureF
-        The coadd exposure
     position : lsst.geom.Point2D
-        Position in pixel coordinates
     fallback_fwhm : float
-        Fallback value if PSF unavailable
-    
+
     Returns:
     --------
-    fwhm : float
-        PSF FWHM in pixels
+    fwhm : float  (pixels)
     """
     if not HAS_LSST:
         return fallback_fwhm
-    
+
     try:
         psf = exposure.getPsf()
         shape = psf.computeShape(position)
-        # getTraceRadius returns sqrt(Ixx + Iyy)
-        sigma = shape.getTraceRadius()
-        fwhm = 2.355 * sigma
-        return fwhm
-    except:
+        # getDeterminantRadius = (Ixx*Iyy - Ixy^2)^(1/4), the correct
+        # effective sigma for a 2-D Gaussian (used in the DP0.2 PSF tutorial)
+        sigma = shape.getDeterminantRadius()
+        fwhm  = sigma * 2.0 * np.sqrt(2.0 * np.log(2.0))   # ≈ 2.355 * sigma
+        return float(fwhm)
+    except Exception as e:
+        print(f"Warning: could not compute PSF FWHM: {e}")
         return fallback_fwhm
 
 
