@@ -9,6 +9,33 @@ import numpy as np
 from scipy.signal import fftconvolve
 
 
+def make_gaussian_psf(fwhm_px, size=None):
+    """
+    Create a normalized Gaussian PSF kernel.
+
+    Parameters
+    ----------
+    fwhm_px : float
+        FWHM in pixels.
+    size : int or None
+        Kernel size. If None, auto = 6*sigma+1 (odd, min 21).
+
+    Returns
+    -------
+    psf : np.ndarray
+        2D PSF kernel, normalized to sum=1.
+    """
+    sigma = fwhm_px / 2.355
+    if size is None:
+        size = int(np.ceil(sigma * 6)) | 1
+        size = max(size, 21)
+    h = size // 2
+    y, x = np.mgrid[:size, :size]
+    r2 = (x - h)**2 + (y - h)**2
+    psf = np.exp(-r2 / (2 * sigma**2))
+    return psf / psf.sum()
+
+
 def get_psf_from_coadd(exposure, position):
     """
     Extract the PSF kernel image from a Rubin deepCoadd at a given position.
