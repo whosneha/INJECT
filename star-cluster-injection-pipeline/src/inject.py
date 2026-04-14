@@ -35,38 +35,44 @@ from src.psf_convolution import get_psf_from_coadd, convolve_with_psf
 def get_psf_image_at_position(exposure, position):
     """
     Extract PSF image at a specific position from a Rubin coadd.
-    
-    Follows the Rubin tutorial approach for PSF extraction.
-    
-    Parameters:
-    -----------
+
+    Parameters
+    ----------
     exposure : lsst.afw.image.ExposureF
-        The coadd exposure
+        The coadd exposure.
     position : lsst.geom.Point2D
-        Position in pixel coordinates
-    
-    Returns:
-    --------
-    psf_array : ndarray
-        2D PSF image, normalized to sum to 1
+        Position in CUTOUT pixel coordinates (0-indexed).
+        The bbox offset is applied internally.
+
+    Returns
+    -------
+    psf_array : np.ndarray
+        2D PSF image normalized to sum to 1.
     """
     if not HAS_LSST:
         raise RuntimeError("LSST stack required for PSF extraction")
-    
+
     psf_model = exposure.getPsf()
-    
+
+    # ── THE FIX: convert cutout coords → focal plane coords ──────────────────
+    # The CoaddPsf lives in focal plane coordinates. The coadd bbox does NOT
+    # start at (0, 0) — e.g. x=[11900, 16099] for DP0.2 patches.
+    # Passing raw cutout coords causes InvalidPsfError: 
+    # "no input images at that point."
+    bbox      = exposure.getBBox()
+    focal_x   = position.getX() + bbox.getMinX()
+    focal_y   = position.getY() + bbox.getMinY()
+    focal_pos = Point2D(focal_x, focal_y)
+    # ── END FIX ──────────────────────────────────────────────────────────────
+
     try:
-        # Compute PSF image at the specified position
-        psf_image = psf_model.computeKernelImage(position)
+        psf_image = psf_model.computeKernelImage(focal_pos)
         psf_array = psf_image.array.copy()
-        
-        # Normalize to sum to 1
         psf_array = psf_array / np.sum(psf_array)
         return psf_array
-        
+
     except Exception as e:
-        print(f"Warning: Could not compute PSF at {position}: {e}")
-        # Return a simple Gaussian PSF as fallback
+        print(f"Warning: Could not compute PSF at focal plane ({focal_x:.0f}, {focal_y:.0f}): {e}")
         return _create_gaussian_psf(fwhm=3.5, size=41)
 
 
@@ -352,12 +358,19 @@ def create_injection_catalog(n_clusters, image_shape,
         
         # Check PSF validity if exposure provided
         if exposure is not None and HAS_LSST:
-            pos = Point2D(float(x), float(y))
+            # ── FIX: use focal plane coords for PSF validity check ────────────
+            # Raw cutout coords (x, y) cannot be passed directly to the PSF.
+            # The CoaddPsf bbox does not start at (0,0) — must add the offset.
+            bbox    = exposure.getBBox()
+            focal_x = float(x) + bbox.getMinX()
+            focal_y = float(y) + bbox.getMinY()
+            pos     = Point2D(focal_x, focal_y)
+            # ── END FIX ──────────────────────────────────────────────────────
             try:
                 exposure.getPsf().computeKernelImage(pos)
             except:
                 continue
-        
+
         # Random magnitude (uniform)
         mag = np.random.uniform(*mag_range)
         
@@ -487,13 +500,15 @@ def inject_from_catalog(image, catalog, exposure=None, add_noise=True,
 
         # ---- PSF convolution ----
         if psf_mode == 'spatially_varying' and exposure is not None:
-            from lsst.geom import Point2D
-            pos = Point2D(float(entry['x']), float(entry['y']))
+            # ── FIX: use focal plane coords ───────────────────────────────────
+            bbox    = exposure.getBBox()
+            focal_x = float(entry['x']) + bbox.getMinX()
+            focal_y = float(entry['y']) + bbox.getMinY()
+            pos     = Point2D(focal_x, focal_y)
+            # ── END FIX ──────────────────────────────────────────────────────
             try:
                 local_psf = get_psf_from_coadd(exposure, pos)
-                stamp = convolve_with_psf(stamp, local_psf)
-                stamp_info['psf_convolved'] = True
-                stamp_info['psf_fwhm_local'] = None  # could compute if desired
+                stamp     = convolve_with_psf(stamp, local_psf)
             except Exception as e:
                 print(f"  Warning: PSF convolution failed for cluster {entry.get('id','?')}: {e}")
                 stamp_info['psf_convolved'] = False
