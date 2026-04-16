@@ -1,17 +1,19 @@
 """
 Main injection module for star cluster injection pipeline.
 
-Follows the Rubin source injection tutorial approach:
-https://pipelines.lsst.io/modules/lsst.source.injection/
 
 Supports two cluster generation methods:
 1. Smooth: Extended source with analytical profile
 2. Discrete: Individual stars with positions and magnitudes
+
+Hi here I am testing the additon of a change just so that I can show you how to make changes to github!
 """
 
 import numpy as np
 from .light_profiles import PlummerProfile, KingProfile, EFFProfile, SersicProfile
 from .cluster_models import create_cluster, DiscreteStarCluster
+
+
 
 # Check for GalSim (required for proper PSF convolution)
 try:
