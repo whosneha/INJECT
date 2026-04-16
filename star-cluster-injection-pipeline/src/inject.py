@@ -7,6 +7,8 @@ Supports two cluster generation methods:
 2. Discrete: Individual stars with positions and magnitudes
 
 Hi here I am testing the additon of a change just so that I can show you how to make changes to github!
+
+Let's try together , can put in something as easy as a comment. you can see my change in a comment ahah!
 """
 
 import numpy as np
@@ -15,7 +17,7 @@ from .cluster_models import create_cluster, DiscreteStarCluster
 
 
 
-# Check for GalSim (required for proper PSF convolution)
+# Check for GalSim (required for proper PSF convolution) NEED TO REMOVE THIS BECUASe the psf is solved!
 try:
     import galsim
     HAS_GALSIM = True
