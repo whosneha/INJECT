@@ -1,6 +1,17 @@
 import os
+import logging
 import numpy as np
 import pandas as pd
+import concurrent.futures
+from copy import deepcopy
+
+# Module-level logger — timestamps + level show up in RSP logs
+logging.basicConfig(
+    format  = '%(asctime)s  %(levelname)s  %(message)s',
+    datefmt = '%H:%M:%S',
+    level   = logging.INFO,
+)
+logger = logging.getLogger(__name__)
 
 
 class InjectionPipeline:
@@ -13,15 +24,22 @@ class InjectionPipeline:
     pipe.load_data(image=image)
     catalog = pipe.generate_catalog()
 
-    # inject using inject_clusters_rubin_psf (in notebook or here)
+    # single run
     pipe.injected_image    = injected_image
     pipe.injection_info    = injection_info
     pipe.detection_catalog = detections
     pipe.save_results()
+
+    # batch run (sequential)
+    iterations = pipe.run_batch(n_iterations=10, n_per_iter=1000, ...)
+
+    # batch run (parallel — check your RSP allocation first!)
+    iterations = pipe.run_batch(n_iterations=10, n_per_iter=1000,
+                                n_workers=4, ...)
     """
 
     def __init__(self, config):
-        self.config = config
+        self.config            = config
         self.image             = None
         self.injected_image    = None
         self.injection_info    = []
@@ -42,8 +60,7 @@ class InjectionPipeline:
         Returns
         -------
         catalog : list[dict]
-            Each dict has keys:
-            id, x, y, magnitude, r_half, concentration, age_gyr, profile_type
+            Keys: id, x, y, magnitude, r_half, concentration, age_gyr, profile_type
         """
         if self.image is None:
             raise RuntimeError('Call load_data(image=...) before generate_catalog().')
@@ -57,7 +74,7 @@ class InjectionPipeline:
 
         catalog = []
         for i in range(cfg.n_clusters):
-            entry = {
+            catalog.append({
                 'id'           : i,
                 'x'            : int(rng.integers(buf, nx - buf)),
                 'y'            : int(rng.integers(buf, ny - buf)),
@@ -66,120 +83,234 @@ class InjectionPipeline:
                 'concentration': float(rng.uniform(cc.concentration_min, cc.concentration_max)),
                 'age_gyr'      : float(rng.uniform(cc.age_min_gyr,       cc.age_max_gyr)),
                 'profile_type' : cc.profile_type,
-            }
-            catalog.append(entry)
+            })
 
         self._catalog = catalog
         return catalog
-    
 
+    # ------------------------------------------------------------------
     def run_batch(self, n_iterations, n_per_iter,
                   psf_obj, bbox_x_min, bbox_y_min,
-                  psf_fwhm_fallback=3.5,
-                  detector_fn=None,
-                  verbose=True):
+                  psf_fwhm_fallback = 3.5,
+                  detector_fn       = None,
+                  store_images      = False,
+                  checkpoint_dir    = None,
+                  n_workers         = 1,       # 1=sequential, -1=all CPUs, N=N threads
+                  verbose           = True):
         """
         Run N iterations of injection + detection.
 
+        Parameters
+        ----------
+        store_images   : bool
+            If True, keep injected_image in each iteration dict.
+            WARNING: memory cost = n_iterations × image_size × 8 bytes.
+            Default False — only the last image is kept for plotting.
+        checkpoint_dir : str or None
+            If set, saves each iteration's catalogs to this directory
+            as they complete. Safe to resume after a crash.
+        n_workers      : int
+            Number of parallel threads.
+              1  = sequential, safest, easiest to debug (default)
+             -1  = use all available CPUs
+              N  = use N threads
+            Uses threads (not processes) so the Rubin Butler/PSF objects
+            don't need to be pickled — they are read-only and safe to share
+            across threads.
+            NOTE: check your RSP CPU allocation before setting > 4.
+
         Returns
         -------
-        iterations : list[dict]  — one dict per iteration, each with keys:
-            'iteration'       : int
-            'injection_info'  : list[dict]
-            'detections'      : list[dict]
-            'injected_image'  : 2D ndarray
+        iterations : list[dict], one per iteration, keys:
+            iteration, injection_info, detections,
+            injected_image (only if store_images=True)
         """
         from .inject import inject_clusters_rubin_psf
 
-        iterations = []
-        original_n = self.config.n_clusters
-        self.config.n_clusters = n_per_iter
+        if n_workers == -1:
+            n_workers = os.cpu_count()
+            logger.info(f'n_workers=-1 → using all {n_workers} CPUs')
 
+        if checkpoint_dir is not None:
+            os.makedirs(checkpoint_dir, exist_ok=True)
+
+        # ------------------------------------------------------------------
+        # Build all per-iteration args up front.
+        # Config is read here (main thread) so worker never touches self.config.
+        # ------------------------------------------------------------------
+        original_seed = self.config.seed
+        original_n    = self.config.n_clusters
+
+        iter_args = []
         for iteration in range(n_iterations):
-            if verbose:
-                print(f'\n--- Iteration {iteration + 1}/{n_iterations} ---')
-
-            self.config.seed = iteration
+            self.config.seed       = iteration
+            self.config.n_clusters = n_per_iter
             catalog = self.generate_catalog()
+            self.config.seed       = original_seed
+            self.config.n_clusters = original_n
 
-            injected_image, injection_info = inject_clusters_rubin_psf(
-                image             = self.image,
-                catalog           = catalog,
-                psf_obj           = psf_obj,
-                bbox_x_min        = bbox_x_min,
-                bbox_y_min        = bbox_y_min,
-                psf_fwhm_fallback = psf_fwhm_fallback,
-                pixel_scale       = self.config.pixel_scale,
-                zero_point        = self.config.zero_point,
-                add_noise         = self.config.add_noise,
-                use_actual_psf    = self.config.use_actual_psf,
-                rng_seed          = iteration,
-                verbose           = verbose,
-            )
-
-            for entry in injection_info:
-                entry['iteration'] = iteration
-
-            detections = []
-            if detector_fn is not None:
-                detections = detector_fn(injected_image)
-                for d in detections:
-                    d['iteration'] = iteration
-                if verbose:
-                    print(f'  Detections: {len(detections)}')
-
-            iterations.append({
-                'iteration'      : iteration,
-                'injection_info' : injection_info,
-                'detections'     : detections,
-                'injected_image' : injected_image,
+            iter_args.append({
+                'iteration'        : iteration,
+                'catalog'          : catalog,
+                'image'            : self.image,       # read-only, safe to share
+                'psf_obj'          : psf_obj,          # read-only, safe to share
+                'bbox_x_min'       : bbox_x_min,
+                'bbox_y_min'       : bbox_y_min,
+                'psf_fwhm_fallback': psf_fwhm_fallback,
+                'pixel_scale'      : self.config.pixel_scale,
+                'zero_point'       : self.config.zero_point,
+                'add_noise'        : self.config.add_noise,
+                'use_actual_psf'   : self.config.use_actual_psf,
+                'detector_fn'      : detector_fn,
+                'store_images'     : store_images,
+                'checkpoint_dir'   : checkpoint_dir,
             })
 
-        self.config.n_clusters = original_n
+        # ------------------------------------------------------------------
+        # Worker — fully self-contained, no reference to self inside
+        # ------------------------------------------------------------------
+        def _run_one(args):
+            from .inject import inject_clusters_rubin_psf
 
-        # Flatten for convenience
-        self.injection_info    = [e for it in iterations for e in it['injection_info']]
-        self.detection_catalog = [d for it in iterations for d in it['detections']]
+            it = args['iteration']
+            logger.info(f'Iteration {it + 1}/{n_iterations} starting')
 
-        if verbose:
-            print(f'\nBatch complete.')
-            print(f'  Total injected : {len(self.injection_info)}')
-            print(f'  Total detected : {len(self.detection_catalog)}')
+            injected_image, injection_info = inject_clusters_rubin_psf(
+                image             = args['image'],
+                catalog           = args['catalog'],
+                psf_obj           = args['psf_obj'],
+                bbox_x_min        = args['bbox_x_min'],
+                bbox_y_min        = args['bbox_y_min'],
+                psf_fwhm_fallback = args['psf_fwhm_fallback'],
+                pixel_scale       = args['pixel_scale'],
+                zero_point        = args['zero_point'],
+                add_noise         = args['add_noise'],
+                use_actual_psf    = args['use_actual_psf'],
+                rng_seed          = it,
+                verbose           = False,  # suppress per-cluster noise in parallel
+            )
+
+            # Drop stamps immediately after injection
+            for entry in injection_info:
+                entry.pop('stamp', None)
+                entry['iteration'] = it
+
+            detections = []
+            if args['detector_fn'] is not None:
+                detections = args['detector_fn'](injected_image)
+                for d in detections:
+                    d['iteration'] = it
+
+            logger.info(f'Iteration {it + 1}: '
+                        f'{len(injection_info)} injected, '
+                        f'{len(detections)} detected')
+
+            # Checkpoint to disk
+            if args['checkpoint_dir'] is not None:
+                inj_path = os.path.join(args['checkpoint_dir'],
+                                        f'injection_iter{it:03d}.csv')
+                det_path = os.path.join(args['checkpoint_dir'],
+                                        f'detections_iter{it:03d}.csv')
+                pd.DataFrame(injection_info).to_csv(inj_path, index=False)
+                if detections:
+                    pd.DataFrame(detections).to_csv(det_path, index=False)
+                logger.info(f'Checkpoint saved -> {inj_path}')
+
+            result = {
+                'iteration'      : it,
+                'injection_info' : injection_info,
+                'detections'     : detections,
+            }
+            if args['store_images']:
+                result['injected_image'] = injected_image
+            else:
+                # Pass last image back only from iteration 0 for plotting
+                result['injected_image'] = injected_image if it == 0 else None
+
+            return result
+
+        # ------------------------------------------------------------------
+        # Sequential or parallel execution
+        # ------------------------------------------------------------------
+        if n_workers == 1:
+            logger.info(f'Running {n_iterations} iterations sequentially')
+            raw_results = [_run_one(a) for a in iter_args]
+        else:
+            logger.info(f'Running {n_iterations} iterations across {n_workers} threads')
+            raw_results = []
+            with concurrent.futures.ThreadPoolExecutor(max_workers=n_workers) as ex:
+                futures = {ex.submit(_run_one, a): a['iteration']
+                           for a in iter_args}
+                for fut in concurrent.futures.as_completed(futures):
+                    try:
+                        raw_results.append(fut.result())
+                    except Exception as e:
+                        it = futures[fut]
+                        logger.error(f'Iteration {it} FAILED: {e}')
+
+        # Sort by iteration (parallel completion order is non-deterministic)
+        iterations = sorted(raw_results, key=lambda r: r['iteration'])
+
+        # Keep only last available injected image for quick plotting
+        if not store_images:
+            last_img = next(
+                (r['injected_image'] for r in reversed(iterations)
+                 if r.get('injected_image') is not None), None
+            )
+            self.injected_image = last_img
+            for r in iterations:
+                r.pop('injected_image', None)
+
+        self.injection_info    = [e for r in iterations for e in r['injection_info']]
+        self.detection_catalog = [d for r in iterations for d in r['detections']]
+
+        logger.info(f'Batch complete — '
+                    f'{len(self.injection_info)} injected, '
+                    f'{len(self.detection_catalog)} detected')
 
         return iterations
 
     # ------------------------------------------------------------------
+    def _save_checkpoint(self, checkpoint_dir, iteration,
+                         injection_info, detections):
+        """Save one iteration's results to disk immediately after completion."""
+        inj_path = os.path.join(checkpoint_dir,
+                                f'injection_iter{iteration:03d}.csv')
+        det_path = os.path.join(checkpoint_dir,
+                                f'detections_iter{iteration:03d}.csv')
+
+        pd.DataFrame(injection_info).to_csv(inj_path, index=False)
+        if detections:
+            pd.DataFrame(detections).to_csv(det_path, index=False)
+
+        logger.info(f'Checkpoint saved -> {inj_path}')
+
+    # ------------------------------------------------------------------
     def save_results(self):
-        """Save injection catalog, injected image (optional), and summary CSV."""
+        """Save injection catalog, injected image (optional), and detection catalog."""
         os.makedirs(self.config.output_dir, exist_ok=True)
         out = self.config.output_dir
 
-        # -- injection catalog --
         if self.injection_info:
-            rows = [{k: v for k, v in info.items() if k != 'stamp'}
-                    for info in self.injection_info]
-            df = pd.DataFrame(rows)
             path = os.path.join(out, 'injection_catalog.csv')
-            df.to_csv(path, index=False)
-            print(f'Saved injection catalog  -> {path}')
+            pd.DataFrame(self.injection_info).to_csv(path, index=False)
+            logger.info(f'Saved injection catalog  -> {path}')
 
-        # -- injected image --
         if self.config.save_injected_image and self.injected_image is not None:
             try:
                 from astropy.io import fits
                 path = os.path.join(out, 'injected_image.fits')
                 fits.writeto(path, self.injected_image.astype(np.float32),
                              overwrite=True)
-                print(f'Saved injected image     -> {path}')
+                logger.info(f'Saved injected image     -> {path}')
             except ImportError:
-                np.save(os.path.join(out, 'injected_image.npy'), self.injected_image)
-                print(f'Saved injected image (npy) -> {out}/injected_image.npy')
+                path = os.path.join(out, 'injected_image.npy')
+                np.save(path, self.injected_image)
+                logger.info(f'Saved injected image     -> {path}')
 
-        # -- detection catalog --
         if self.detection_catalog:
-            pd.DataFrame(self.detection_catalog).to_csv(
-                os.path.join(out, 'detection_catalog.csv'), index=False
-            )
-            print(f'Saved detection catalog  -> {out}/detection_catalog.csv')
+            path = os.path.join(out, 'detection_catalog.csv')
+            pd.DataFrame(self.detection_catalog).to_csv(path, index=False)
+            logger.info(f'Saved detection catalog  -> {path}')
 
-        print(f'All outputs in: {out}/')
+        logger.info(f'All outputs in: {out}/')
