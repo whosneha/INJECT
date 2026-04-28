@@ -5,13 +5,19 @@ import pandas as pd
 import concurrent.futures
 from copy import deepcopy
 
-# Module-level logger — timestamps + level show up in RSP logs
-logging.basicConfig(
-    format  = '%(asctime)s  %(levelname)s  %(message)s',
-    datefmt = '%H:%M:%S',
-    level   = logging.INFO,
-)
+# -- Fix: force logger to print in Jupyter notebooks --
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+if not logger.handlers:
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter(
+        fmt='%(asctime)s  %(levelname)s  %(message)s',
+        datefmt='%H:%M:%S',
+    ))
+    logger.addHandler(handler)
+
+logger.propagate = False   # prevent duplicate messages
 
 
 class InjectionPipeline:
