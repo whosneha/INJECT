@@ -36,9 +36,11 @@ except ImportError:
 
 from src.psf_convolution import get_psf_from_coadd, convolve_with_psf
 
+# ...existing code...
+
 def get_psf_image_at_position(exposure, position):
     """
-    Extract PSF image at a specific position from a Rubin coadd.
+    Extract PSF as a GalSim InterpolatedImage at a specific position from a Rubin coadd.
 
     Parameters
     ----------
@@ -50,35 +52,47 @@ def get_psf_image_at_position(exposure, position):
 
     Returns
     -------
-    psf_array : np.ndarray
-        2D PSF image normalized to sum to 1.
+    psf_gs : galsim.InterpolatedImage
+        GalSim PSF object normalized to unit flux.
+    fwhm_px : float
+        PSF FWHM at this position in pixels.
     """
     if not HAS_LSST:
         raise RuntimeError("LSST stack required for PSF extraction")
 
-    psf_model = exposure.getPsf()
+    psf_obj = exposure.getPsf()
 
-    # ── THE FIX: convert cutout coords → focal plane coords ──────────────────
-    # The CoaddPsf lives in focal plane coordinates. The coadd bbox does NOT
-    # start at (0, 0) — e.g. x=[11900, 16099] for DP0.2 patches.
-    # Passing raw cutout coords causes InvalidPsfError: 
-    # "no input images at that point."
+    # Convert cutout coords -> focal plane coords using bbox offset
     bbox      = exposure.getBBox()
     focal_x   = position.getX() + bbox.getMinX()
     focal_y   = position.getY() + bbox.getMinY()
     focal_pos = Point2D(focal_x, focal_y)
-    # ── END FIX ──────────────────────────────────────────────────────────────
 
     try:
-        psf_image = psf_model.computeKernelImage(focal_pos)
-        psf_array = psf_image.array.copy()
-        psf_array = psf_array / np.sum(psf_array)
-        return psf_array
+        # Use computeImage (not computeKernelImage) to match notebook approach
+        psf_image = psf_obj.computeImage(focal_pos)
+        psf_array = psf_image.array.astype(np.float64)
+
+        # Normalise to unit sum
+        psf_sum = psf_array.sum()
+        if psf_sum > 0:
+            psf_array /= psf_sum
+
+        # Wrap as GalSim InterpolatedImage
+        gs_img = galsim.Image(psf_array, scale=PIXEL_SCALE_DEFAULT)
+        psf_gs = galsim.InterpolatedImage(gs_img, normalization='flux')
+
+        # Measure FWHM at this position
+        shape   = psf_obj.computeShape(focal_pos)
+        fwhm_px = shape.getDeterminantRadius() * 2.355
+
+        return psf_gs, fwhm_px
 
     except Exception as e:
         print(f"Warning: Could not compute PSF at focal plane ({focal_x:.0f}, {focal_y:.0f}): {e}")
-        return _create_gaussian_psf(fwhm=3.5, size=41)
+        return None, None
 
+# ...existing code...
 
 def _create_gaussian_psf(fwhm, size=41):
     """Create a simple Gaussian PSF as fallback."""
@@ -88,6 +102,14 @@ def _create_gaussian_psf(fwhm, size=41):
     r2 = (x - center)**2 + (y - center)**2
     psf = np.exp(-r2 / (2 * sigma**2))
     return psf / np.sum(psf)
+
+
+def _gaussian_psf_galsim(fwhm_px, pixel_scale):
+    """Create a GalSim Gaussian PSF as fallback."""
+    return galsim.Gaussian(fwhm=fwhm_px * pixel_scale)
+
+
+PIXEL_SCALE_DEFAULT = 0.2  # arcsec/pixel (Rubin standard)
 
 
 def convolve_with_psf_galsim(image, psf_array, pixel_scale=1.0):
@@ -111,36 +133,36 @@ def convolve_with_psf_galsim(image, psf_array, pixel_scale=1.0):
         Convolved image
     """
     if not HAS_GALSIM:
-        # Fallback to scipy FFT convolution
         from scipy.signal import fftconvolve
         return fftconvolve(image, psf_array, mode='same')
-    
+
     ny, nx = image.shape
-    
-    # Create GalSim image objects
-    gal_image = galsim.Image(image, scale=pixel_scale)
-    psf_image = galsim.Image(psf_array, scale=pixel_scale)
-    
-    # Create InterpolatedImages
-    source = galsim.InterpolatedImage(gal_image, scale=pixel_scale)
-    psf = galsim.InterpolatedImage(psf_image, scale=pixel_scale, flux=1.0)
-    
+
+    # Wrap cluster image as GalSim InterpolatedImage
+    gs_cluster_img = galsim.Image(image.astype(np.float64), scale=pixel_scale)
+    cluster_gs     = galsim.InterpolatedImage(gs_cluster_img, normalization='flux')
+
+    # Wrap PSF as GalSim InterpolatedImage
+    gs_psf_img = galsim.Image(psf_array.astype(np.float64), scale=pixel_scale)
+    psf_gs     = galsim.InterpolatedImage(gs_psf_img, normalization='flux')
+
     # Convolve
-    convolved = galsim.Convolve([source, psf])
-    
+    convolved = galsim.Convolve([cluster_gs, psf_gs])
+
     # Draw result
     result = galsim.Image(nx, ny, scale=pixel_scale)
-    convolved.drawImage(image=result, scale=pixel_scale, method='no_pixel')
-    
+    convolved.drawImage(image=result, method='no_pixel')
+
     return result.array
 
 
-def inject_cluster(image, position, profile, psf_fwhm=None, exposure=None, 
+def inject_cluster(image, position, profile, psf_fwhm=None, exposure=None,
                    add_noise=True, pixel_scale=0.2, return_stamps=False):
     """
     Inject a synthetic star cluster into an image.
     
-    Follows the Rubin source injection tutorial methodology.
+    Uses the actual Rubin CoaddPsf (via GalSim InterpolatedImage + Convolve)
+    when an exposure is provided, with a Gaussian fallback otherwise.
     
     Parameters:
     -----------
@@ -172,69 +194,98 @@ def inject_cluster(image, position, profile, psf_fwhm=None, exposure=None,
         - 'intrinsic': The intrinsic cluster stamp (before PSF)
         - 'convolved': The PSF-convolved stamp (before noise)
         - 'final': The final stamp (with noise if added)
-        - 'psf': The PSF used for convolution (if available)
+        - 'psf': The PSF array used for convolution (if available)
+        - 'psf_fwhm_px': Measured PSF FWHM at injection position (pixels)
     """
     ny, nx = image.shape
     cy, cx = int(position[0]), int(position[1])
-    
+
     # Check bounds
     if not (0 <= cx < nx and 0 <= cy < ny):
         print(f"Warning: Position ({cx}, {cy}) outside image. Skipping.")
         if return_stamps:
             return image.copy(), np.zeros_like(image), {}
         return image.copy(), np.zeros_like(image)
-    
+
     # Determine stamp size based on cluster size
     stamp_size = max(51, int(10 * profile.r_half) | 1)
     half_stamp = stamp_size // 2
-    
-    # Generate intrinsic cluster model
-    intrinsic_stamp = profile.generate_2d((stamp_size, stamp_size))
-    
-    # Store stamps for output
+
+    # Generate intrinsic cluster model (normalised to sum=1)
+    intrinsic_stamp = profile.generate_2d((stamp_size, stamp_size)).astype(np.float64)
+    total = intrinsic_stamp.sum()
+    if total > 0:
+        intrinsic_stamp /= total
+
     stamps = {
-        'intrinsic': intrinsic_stamp.copy(),
-        'position': (cy, cx),
-        'stamp_size': stamp_size,
-        'psf': None,
-        'convolved': None,
-        'final': None
+        'intrinsic':    intrinsic_stamp.copy(),
+        'position':     (cy, cx),
+        'stamp_size':   stamp_size,
+        'psf':          None,
+        'psf_fwhm_px':  None,
+        'convolved':    None,
+        'final':        None,
     }
-    
-    # Get PSF and convolve
-    cluster_stamp = intrinsic_stamp.copy()
-    
-    if exposure is not None and HAS_LSST:
-        # Use actual Rubin PSF from the coadd
+
+    # ---- PSF selection and convolution ----------------------------------------
+    rng = np.random.default_rng()
+
+    if exposure is not None and HAS_LSST and HAS_GALSIM:
+        # Use actual Rubin CoaddPsf via GalSim InterpolatedImage
         pos = Point2D(float(cx), float(cy))
-        try:
-            psf_array = get_psf_image_at_position(exposure, pos)
-            stamps['psf'] = psf_array.copy()
-            cluster_stamp = convolve_with_psf_galsim(cluster_stamp, psf_array, pixel_scale)
-        except Exception as e:
-            print(f"PSF convolution failed: {e}, using fallback")
-            if psf_fwhm is not None:
-                psf_array = _create_gaussian_psf(psf_fwhm, 41)
-                stamps['psf'] = psf_array.copy()
-                cluster_stamp = convolve_with_psf_galsim(cluster_stamp, psf_array, pixel_scale)
-    elif psf_fwhm is not None:
-        # Use generic Gaussian PSF
+        psf_gs, fwhm_px = get_psf_image_at_position(exposure, pos)
+
+        if psf_gs is None:
+            # get_psf_image_at_position already printed a warning; use fallback
+            fallback_fwhm = psf_fwhm if psf_fwhm is not None else 3.5
+            psf_gs   = _gaussian_psf_galsim(fallback_fwhm, pixel_scale)
+            fwhm_px  = fallback_fwhm
+
+        stamps['psf_fwhm_px'] = fwhm_px
+
+        # Wrap intrinsic stamp as GalSim InterpolatedImage
+        gs_cluster_img = galsim.Image(intrinsic_stamp, scale=pixel_scale)
+        cluster_gs     = galsim.InterpolatedImage(gs_cluster_img, normalization='flux')
+
+        # Convolve cluster with actual PSF
+        convolved_gs = galsim.Convolve([cluster_gs, psf_gs])
+        out_img      = galsim.Image(stamp_size, stamp_size, scale=pixel_scale)
+        convolved_gs.drawImage(image=out_img, method='no_pixel')
+        cluster_stamp = out_img.array.copy().astype(np.float64)
+
+    elif HAS_GALSIM and psf_fwhm is not None:
+        # Gaussian fallback via GalSim
         psf_array = _create_gaussian_psf(psf_fwhm, 41)
-        stamps['psf'] = psf_array.copy()
-        cluster_stamp = convolve_with_psf_galsim(cluster_stamp, psf_array, pixel_scale)
-    
+        stamps['psf']        = psf_array.copy()
+        stamps['psf_fwhm_px'] = psf_fwhm
+        cluster_stamp = convolve_with_psf_galsim(intrinsic_stamp, psf_array, pixel_scale)
+
+    else:
+        # No PSF convolution
+        cluster_stamp = intrinsic_stamp.copy()
+
     stamps['convolved'] = cluster_stamp.copy()
-    
+
+    # Scale to correct total flux (profile already normalised to sum=1,
+    # drawImage preserves flux so cluster_stamp.sum() ≈ 1 after convolution)
+    stamp_sum = cluster_stamp.sum()
+    if stamp_sum > 0:
+        # Re-normalise in case convolution changed total slightly
+        cluster_stamp /= stamp_sum
+        # Then scale by the intrinsic flux from the profile
+        total_flux = intrinsic_stamp.sum() if total > 0 else 1.0
+        cluster_stamp *= total_flux
+
     # Add Poisson noise if requested
     if add_noise and np.any(cluster_stamp > 0):
-        positive_mask = cluster_stamp > 0
-        noisy_stamp = cluster_stamp.copy()
-        noisy_stamp[positive_mask] = np.random.poisson(
-            cluster_stamp[positive_mask].astype(np.float64)
-        ).astype(np.float64)
-        cluster_stamp = noisy_stamp
-    
+        noise_sigma = np.sqrt(np.clip(cluster_stamp, 0, None))
+        cluster_stamp += rng.normal(
+            0.0, np.where(noise_sigma > 0, noise_sigma, 1e-10)
+        )
+
     stamps['final'] = cluster_stamp.copy()
+
+    # ...existing code...
     
     # Calculate insertion bounds
     y_start = max(0, cy - half_stamp)
