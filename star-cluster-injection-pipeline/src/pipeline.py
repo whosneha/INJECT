@@ -79,34 +79,19 @@ class InjectionPipeline:
                   detector_fn=None,
                   verbose=True):
         """
-        Run N iterations of injection + detection, accumulating all results.
-
-        Parameters
-        ----------
-        n_iterations      : int   -- number of independent injection runs
-        n_per_iter        : int   -- clusters per iteration
-        psf_obj           : lsst CoaddPsf
-        bbox_x_min        : int
-        bbox_y_min        : int
-        psf_fwhm_fallback : float -- Gaussian fallback FWHM in pixels
-        detector_fn       : callable or None
-            Function with signature:
-                detections = detector_fn(injected_image)
-            where detections is a list of dicts with at least 'x', 'y' keys.
-            If None, skips detection (you can run retrieval manually later).
-        verbose           : bool
+        Run N iterations of injection + detection.
 
         Returns
         -------
-        all_injection_info : list[dict]  -- all injections across all iterations
-        all_detections     : list[dict]  -- all detections across all iterations
+        iterations : list[dict]  — one dict per iteration, each with keys:
+            'iteration'       : int
+            'injection_info'  : list[dict]
+            'detections'      : list[dict]
+            'injected_image'  : 2D ndarray
         """
         from .inject import inject_clusters_rubin_psf
 
-        all_injection_info = []
-        all_detections     = []
-
-        # temporarily override n_clusters for catalog generation
+        iterations = []
         original_n = self.config.n_clusters
         self.config.n_clusters = n_per_iter
 
@@ -114,7 +99,6 @@ class InjectionPipeline:
             if verbose:
                 print(f'\n--- Iteration {iteration + 1}/{n_iterations} ---')
 
-            # fresh seed per iteration so positions don't repeat
             self.config.seed = iteration
             catalog = self.generate_catalog()
 
@@ -133,29 +117,36 @@ class InjectionPipeline:
                 verbose           = verbose,
             )
 
-            # tag each entry with which iteration it came from
             for entry in injection_info:
                 entry['iteration'] = iteration
-            all_injection_info.extend(injection_info)
 
+            detections = []
             if detector_fn is not None:
                 detections = detector_fn(injected_image)
                 for d in detections:
                     d['iteration'] = iteration
-                all_detections.extend(detections)
                 if verbose:
-                    print(f'  Detections this iteration: {len(detections)}')
+                    print(f'  Detections: {len(detections)}')
 
-        self.config.n_clusters = original_n  # restore
-        self.injection_info    = all_injection_info
-        self.detection_catalog = all_detections
+            iterations.append({
+                'iteration'      : iteration,
+                'injection_info' : injection_info,
+                'detections'     : detections,
+                'injected_image' : injected_image,
+            })
+
+        self.config.n_clusters = original_n
+
+        # Flatten for convenience
+        self.injection_info    = [e for it in iterations for e in it['injection_info']]
+        self.detection_catalog = [d for it in iterations for d in it['detections']]
 
         if verbose:
             print(f'\nBatch complete.')
-            print(f'  Total injected : {len(all_injection_info)}')
-            print(f'  Total detected : {len(all_detections)}')
+            print(f'  Total injected : {len(self.injection_info)}')
+            print(f'  Total detected : {len(self.detection_catalog)}')
 
-        return all_injection_info, all_detections
+        return iterations
 
     # ------------------------------------------------------------------
     def save_results(self):
