@@ -1,252 +1,62 @@
-"""
-Configuration module for star cluster injection pipeline.
-
-Provides a template-based configuration system for setting up injections.
-"""
-
-import json
-import yaml
-from dataclasses import dataclass, field, asdict
-from typing import Optional, List, Dict, Any
-import numpy as np
+from dataclasses import dataclass, field
+from typing import Optional
 
 
 @dataclass
 class ClusterConfig:
-    """Configuration for a single cluster or cluster population."""
-    
-    # Generation method
-    method: str = 'smooth'  # 'smooth' or 'discrete'
-    
-    # Spatial profile
-    profile_type: str = 'plummer'  # 'plummer', 'king', 'eff', 'sersic'
-    
-    # Magnitude range
-    mag_min: float = 19.0
-    mag_max: float = 25.0
-    
-    # Half-light radius range (in pixels)
-    r_half_min: float = 2.0
-    r_half_max: float = 30.0
-    
-    # Profile-specific parameters
-    concentration_min: float = 10.0  # For King profile
-    concentration_max: float = 100.0
-    gamma_min: float = 2.2  # For EFF profile
-    gamma_max: float = 3.5
-    sersic_n_min: float = 1.0  # For Sersic profile
-    sersic_n_max: float = 4.0
-    
-    # =========================================================================
-    # DISCRETE STAR PARAMETERS
-    # =========================================================================
-    
-    # Number of stars per cluster (can be randomized)
-    n_stars_min: int = 50
-    n_stars_max: int = 500
-    n_stars_fixed: int = None  # If set, use fixed number instead of random
-    
-    # Initial Mass Function
-    imf: str = 'kroupa'  # 'kroupa', 'chabrier', 'salpeter'
-    
-    # Stellar mass range
-    mass_min: float = 0.1  # Minimum stellar mass (Msun)
-    mass_max: float = 100.0  # Maximum stellar mass (Msun)
-    
-    # Age range (Gyr)
-    age_gyr_min: float = 0.1
-    age_gyr_max: float = 10.0
-    age_gyr_fixed: float = None  # If set, use fixed age
-    
-    # Metallicity range (Z, solar = 0.02)
-    metallicity_min: float = 0.001  # Very metal-poor
-    metallicity_max: float = 0.04   # Metal-rich
-    metallicity_fixed: float = None  # If set, use fixed metallicity
-    
-    # Distance (parsecs)
-    distance_pc_min: float = 5000
-    distance_pc_max: float = 50000
-    distance_pc_fixed: float = None  # If set, use fixed distance
-    
-    # Binary fraction (0-1)
-    binary_fraction: float = 0.3  # 30% binaries by default
-    
-    # Photometric band for discrete stars
-    band: str = 'i'
+    """Configuration for cluster parameter space."""
+    profile_type      : str   = 'king'    # king | plummer | eff | sersic
+    method            : str   = 'smooth'  # smooth | discrete
+    mag_min           : float = 20.0
+    mag_max           : float = 26.0
+    r_half_min        : float = 2.0       # pixels
+    r_half_max        : float = 10.0      # pixels
+    concentration_min : float = 5.0       # King c, EFF gamma, or Sersic n
+    concentration_max : float = 30.0
+    age_min_gyr       : float = 1.0       # Gyr
+    age_max_gyr       : float = 13.0      # Gyr
+
+    def __post_init__(self):
+        assert self.mag_min < self.mag_max,     'mag_min must be < mag_max'
+        assert self.r_half_min < self.r_half_max, 'r_half_min must be < r_half_max'
+        assert self.profile_type in ('king', 'plummer', 'eff', 'sersic'), \
+            f'Unknown profile_type: {self.profile_type}'
 
 
-@dataclass 
+@dataclass
 class InjectionConfig:
-    """Full configuration for an injection run."""
-    
-    # Run identification
-    run_name: str = 'injection_run'
-    description: str = ''
-    
-    # Data source (RSP Butler)
-    repo: str = 'dp02'
-    collection: str = '2.2i/runs/DP0.2'
-    tract: int = 4431
-    patch: int = 17
-    band: str = 'i'
-    
-    # Number of clusters to inject
-    n_clusters: int = 100
-    
-    # Cluster configuration
-    cluster_config: ClusterConfig = field(default_factory=ClusterConfig)
-    
-    # Injection parameters
-    edge_buffer: int = 100  # Pixels from edge to avoid
-    add_noise: bool = True  # Add Poisson noise
-    use_actual_psf: bool = True  # Use PSF from coadd (vs generic)
-    
-    # Random seed for reproducibility
-    seed: int = 42
-    
-    # Output options
-    save_injected_image: bool = True
-    save_catalog: bool = True
-    output_dir: str = './injection_output'
-    
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert config to dictionary."""
-        d = asdict(self)
-        return d
-    
-    def to_json(self, filepath: str = None) -> str:
-        """Convert config to JSON string, optionally save to file."""
-        json_str = json.dumps(self.to_dict(), indent=2)
-        if filepath:
-            with open(filepath, 'w') as f:
-                f.write(json_str)
-        return json_str
-    
-    def to_yaml(self, filepath: str = None) -> str:
-        """Convert config to YAML string, optionally save to file."""
-        yaml_str = yaml.dump(self.to_dict(), default_flow_style=False)
-        if filepath:
-            with open(filepath, 'w') as f:
-                f.write(yaml_str)
-        return yaml_str
-    
-    @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> 'InjectionConfig':
-        """Create config from dictionary."""
-        cluster_config_dict = d.pop('cluster_config', {})
-        cluster_config = ClusterConfig(**cluster_config_dict)
-        return cls(cluster_config=cluster_config, **d)
-    
-    @classmethod
-    def from_json(cls, filepath: str) -> 'InjectionConfig':
-        """Load config from JSON file."""
-        with open(filepath, 'r') as f:
-            d = json.load(f)
-        return cls.from_dict(d)
-    
-    @classmethod
-    def from_yaml(cls, filepath: str) -> 'InjectionConfig':
-        """Load config from YAML file."""
-        with open(filepath, 'r') as f:
-            d = yaml.safe_load(f)
-        return cls.from_dict(d)
+    """Top-level configuration for the injection pipeline."""
+    run_name            : str          = 'injection_run'
+    n_clusters          : int          = 100
+    seed                : int          = 42
+    edge_buffer         : int          = 50      # pixels
+    add_noise           : bool         = True
+    use_actual_psf      : bool         = True    # False -> Gaussian fallback always
+    save_injected_image : bool         = False
+    output_dir          : str          = 'outputs'
+    cluster_config      : ClusterConfig = field(default_factory=ClusterConfig)
+    # Butler / coadd info (optional, stored for provenance)
+    tract               : Optional[int] = None
+    patch               : Optional[int] = None
+    band                : Optional[str] = None
+    pixel_scale         : float         = 0.2    # arcsec/pixel
+    zero_point          : float         = 27.0
 
-
-# =============================================================================
-# PRE-DEFINED CONFIGURATION TEMPLATES
-# =============================================================================
-
-def get_template_smooth_plummer() -> InjectionConfig:
-    """Template for smooth Plummer profile injection."""
-    return InjectionConfig(
-        run_name='smooth_plummer',
-        description='Smooth Plummer profile clusters',
-        n_clusters=100,
-        cluster_config=ClusterConfig(
-            method='smooth',
-            profile_type='plummer',
-            mag_min=19.0,
-            mag_max=25.0,
-            r_half_min=3.0,
-            r_half_max=25.0
+    def __repr__(self):
+        cc = self.cluster_config
+        return (
+            f'InjectionConfig(\n'
+            f'  run_name    = {self.run_name}\n'
+            f'  n_clusters  = {self.n_clusters}\n'
+            f'  seed        = {self.seed}\n'
+            f'  edge_buffer = {self.edge_buffer} px\n'
+            f'  add_noise   = {self.add_noise}\n'
+            f'  use_actual_psf = {self.use_actual_psf}\n'
+            f'  tract/patch/band = {self.tract}/{self.patch}/{self.band}\n'
+            f'  profile     = {cc.profile_type}  method={cc.method}\n'
+            f'  mag         = [{cc.mag_min}, {cc.mag_max}]\n'
+            f'  r_half      = [{cc.r_half_min}, {cc.r_half_max}] px\n'
+            f'  conc        = [{cc.concentration_min}, {cc.concentration_max}]\n'
+            f'  age         = [{cc.age_min_gyr}, {cc.age_max_gyr}] Gyr\n'
+            f')'
         )
-    )
-
-
-def get_template_smooth_king() -> InjectionConfig:
-    """Template for smooth King profile injection."""
-    return InjectionConfig(
-        run_name='smooth_king',
-        description='Smooth King profile clusters (globular-like)',
-        n_clusters=100,
-        cluster_config=ClusterConfig(
-            method='smooth',
-            profile_type='king',
-            mag_min=19.0,
-            mag_max=25.0,
-            r_half_min=3.0,
-            r_half_max=25.0,
-            concentration_min=20.0,
-            concentration_max=100.0
-        )
-    )
-
-
-def get_template_discrete_kroupa() -> InjectionConfig:
-    """Template for discrete star injection with Kroupa IMF."""
-    return InjectionConfig(
-        run_name='discrete_kroupa',
-        description='Discrete stars with Kroupa IMF',
-        n_clusters=50,
-        cluster_config=ClusterConfig(
-            method='discrete',
-            profile_type='plummer',
-            mag_min=18.0,
-            mag_max=24.0,
-            r_half_min=5.0,
-            r_half_max=30.0,
-            n_stars_min=100,
-            n_stars_max=500,
-            imf='kroupa',
-            age_gyr_min=0.5,
-            age_gyr_max=5.0
-        )
-    )
-
-
-def get_template_completeness_grid() -> InjectionConfig:
-    """Template for completeness analysis with uniform grid sampling."""
-    return InjectionConfig(
-        run_name='completeness_grid',
-        description='Grid sampling for completeness analysis',
-        n_clusters=500,
-        cluster_config=ClusterConfig(
-            method='smooth',
-            profile_type='plummer',
-            mag_min=18.0,
-            mag_max=27.0,
-            r_half_min=2.0,
-            r_half_max=50.0
-        ),
-        seed=12345
-    )
-
-
-TEMPLATES = {
-    'smooth_plummer': get_template_smooth_plummer,
-    'smooth_king': get_template_smooth_king,
-    'discrete_kroupa': get_template_discrete_kroupa,
-    'completeness_grid': get_template_completeness_grid,
-}
-
-
-def get_template(name: str) -> InjectionConfig:
-    """Get a pre-defined configuration template by name."""
-    if name not in TEMPLATES:
-        raise ValueError(f"Unknown template: {name}. Available: {list(TEMPLATES.keys())}")
-    return TEMPLATES[name]()
-
-
-def list_templates() -> List[str]:
-    """List available configuration templates."""
-    return list(TEMPLATES.keys())
