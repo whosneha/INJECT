@@ -54,9 +54,106 @@ class InjectionPipeline:
         self._catalog          = None
 
     # ------------------------------------------------------------------
-    def load_data(self, image):
-        """Load the base image to inject into."""
-        self.image = np.array(image, dtype=np.float64)
+    def load_data(self, image=None, butler=None, data_id=None):
+        """
+        Load image data.
+
+        Single band (existing behaviour):
+            pipe.load_data(image=BASE_IMAGE)
+            pipe.load_data(butler=butler, data_id={'tract':3828,'patch':24,'band':'i'})
+
+        Multi-band:
+            pipe.load_data(butler=butler, data_id={'tract':3828,'patch':24})
+            # loads all bands in config.active_bands automatically
+        """
+        if image is not None:
+            # existing single-image path — unchanged
+            self.image     = image
+            self.images    = {self.config.band: image}
+            self.psf_objs  = {}
+            return
+
+        if butler is not None and data_id is not None:
+            self.images   = {}
+            self.psf_objs = {}
+            self.bboxes   = {}
+
+            for band in self.config.active_bands:
+                bid   = {**data_id, 'band': band}
+                coadd = butler.get('deepCoadd', dataId=bid)
+
+                CUTOUT = self.config.cutout_size   # add this to InjectionConfig
+                self.images[band]   = coadd.image.array[:CUTOUT, :CUTOUT].copy()
+                self.psf_objs[band] = coadd.getPsf()
+                bbox                = coadd.getBBox()
+                self.bboxes[band]   = (bbox.getMinX(), bbox.getMinY())
+
+                print(f'  Loaded band {band}: shape={self.images[band].shape}')
+
+            # default image = first band (keeps single-band code working)
+            self.image = self.images[self.config.active_bands[0]]
+            return
+
+        raise ValueError('Provide either image= or butler= + data_id=')
+
+
+    def run_batch_multiband(self, n_iterations, n_per_iter,
+                             psf_fwhm_fallbacks = None,
+                             detector_fn        = None,
+                             store_images       = False,
+                             checkpoint_dir     = None,
+                             n_workers          = 1,
+                             verbose            = True):
+        """
+        Run batch injection across ALL loaded bands using the SAME
+        random catalog each iteration — so cluster positions are
+        identical across bands (physically correct).
+
+        Parameters
+        ----------
+        psf_fwhm_fallbacks : dict or None
+            Per-band fallback FWHM e.g. {'g': 3.8, 'r': 3.5, 'i': 4.0}
+            If None, uses config.psf_fwhm_fallback for all bands.
+
+        Returns
+        -------
+        dict[band -> list[iteration_dicts]]
+            Same structure as run_batch() but keyed by band.
+        """
+        if not hasattr(self, 'images') or len(self.images) == 0:
+            raise RuntimeError('No images loaded. Call load_data(butler=...) first.')
+
+        if psf_fwhm_fallbacks is None:
+            psf_fwhm_fallbacks = {b: self.config.psf_fwhm_fallback
+                                  for b in self.config.active_bands}
+
+        results = {}   # band -> list of iteration dicts
+
+        for band in self.config.active_bands:
+            print(f'\n{"="*50}')
+            print(f'  Running band: {band}')
+            print(f'{"="*50}')
+
+            # Temporarily swap image/psf to this band
+            self.image = self.images[band]
+            bbox_x, bbox_y = self.bboxes.get(band, (0, 0))
+
+            results[band] = self.run_batch(
+                n_iterations      = n_iterations,
+                n_per_iter        = n_per_iter,
+                psf_obj           = self.psf_objs.get(band),
+                bbox_x_min        = bbox_x,
+                bbox_y_min        = bbox_y,
+                psf_fwhm_fallback = psf_fwhm_fallbacks[band],
+                detector_fn       = detector_fn,
+                store_images      = store_images,
+                checkpoint_dir    = (os.path.join(checkpoint_dir, band)
+                                     if checkpoint_dir else None),
+                n_workers         = n_workers,
+                verbose           = verbose,
+            )
+
+        return results
 
     # ------------------------------------------------------------------
     def generate_catalog(self, rng=None):
@@ -158,8 +255,8 @@ class InjectionPipeline:
             iter_args.append({
                 'iteration'        : iteration,
                 'catalog'          : catalog,
-                'image'            : self.image,       # read-only, safe to share
-                'psf_obj'          : psf_obj,          # read-only, safe to share
+                'image'            : self.image,
+                'psf_obj'          : psf_obj,
                 'bbox_x_min'       : bbox_x_min,
                 'bbox_y_min'       : bbox_y_min,
                 'psf_fwhm_fallback': psf_fwhm_fallback,
@@ -170,6 +267,7 @@ class InjectionPipeline:
                 'detector_fn'      : detector_fn,
                 'store_images'     : store_images,
                 'checkpoint_dir'   : checkpoint_dir,
+                'verbose'          : verbose,    # ← add this
             })
 
         # ------------------------------------------------------------------
@@ -179,7 +277,9 @@ class InjectionPipeline:
             from .inject import inject_clusters_rubin_psf
 
             it = args['iteration']
-            logger.info(f'Iteration {it + 1}/{n_iterations} starting')
+
+            # Print the header before injection starts so user sees progress
+            print(f'\n--- Iteration {it + 1}/{n_iterations} ---')
 
             injected_image, injection_info = inject_clusters_rubin_psf(
                 image             = args['image'],
@@ -193,7 +293,7 @@ class InjectionPipeline:
                 add_noise         = args['add_noise'],
                 use_actual_psf    = args['use_actual_psf'],
                 rng_seed          = it,
-                verbose           = False,  # suppress per-cluster noise in parallel
+                verbose           = args['verbose'],   # ← pass through
             )
 
             # Drop stamps immediately after injection
@@ -207,9 +307,7 @@ class InjectionPipeline:
                 for d in detections:
                     d['iteration'] = it
 
-            logger.info(f'Iteration {it + 1}: '
-                        f'{len(injection_info)} injected, '
-                        f'{len(detections)} detected')
+            print(f'  Detections: {len(detections)}')
 
             # Checkpoint to disk
             if args['checkpoint_dir'] is not None:
@@ -230,7 +328,6 @@ class InjectionPipeline:
             if args['store_images']:
                 result['injected_image'] = injected_image
             else:
-                # Pass last image back only from iteration 0 for plotting
                 result['injected_image'] = injected_image if it == 0 else None
 
             return result
@@ -270,9 +367,10 @@ class InjectionPipeline:
         self.injection_info    = [e for r in iterations for e in r['injection_info']]
         self.detection_catalog = [d for r in iterations for d in r['detections']]
 
-        logger.info(f'Batch complete — '
-                    f'{len(self.injection_info)} injected, '
-                    f'{len(self.detection_catalog)} detected')
+         
+        print(f'\nBatch complete.')
+        print(f'  Total injected : {len(self.injection_info)}')
+        print(f'  Total detected : {len(self.detection_catalog)}')
 
         return iterations
 

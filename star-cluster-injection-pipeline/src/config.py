@@ -27,6 +27,8 @@ class ClusterConfig:
 class InjectionConfig:
     """Top-level configuration for the injection pipeline."""
     run_name            : str          = 'injection_run'
+    band  : str              = 'i'          # single band (default)
+    bands : list[str]        = None     # multi-band (overrides single band if set)
     n_clusters          : int          = 100
     seed                : int          = 42
     edge_buffer         : int          = 50      # pixels
@@ -41,6 +43,11 @@ class InjectionConfig:
     band                : Optional[str] = None
     pixel_scale         : float         = 0.2    # arcsec/pixel
     zero_point          : float         = 27.0
+
+    @property
+    def active_bands(self) -> list[str]:
+        """Always returns a list — works for both single and multi-band."""
+        return self.bands if self.bands is not None else [self.band]
 
     def __repr__(self):
         cc = self.cluster_config
