@@ -209,7 +209,8 @@ def inject_clusters_rubin_psf(image, catalog,
                                rng_seed=42,
                                verbose=True,
                                use_psf_cache=False,
-                               psf_cache=None):
+                               psf_cache=None,
+                               band='default'):
     """
     Inject star clusters into a 2D image using the Rubin CoaddPsf.
 
@@ -243,10 +244,8 @@ def inject_clusters_rubin_psf(image, catalog,
     -------
     injected_image : 2D ndarray  (same dtype as input)
     injection_info : list[dict]  -- one dict per successfully injected cluster
-    timing : dict  -- timing breakdown for each stage
-    cache_stats : dict or None  -- PSF cache statistics (if caching enabled)
-    injected_image : 2D ndarray  (same dtype as input)
-    injection_info : list[dict]  -- one dict per successfully injected cluster
+    timing         : dict          -- per-stage wall-clock seconds
+    cache_stats    : dict or None  -- PSF cache statistics (if caching enabled)
     """
     import time
     
@@ -309,7 +308,7 @@ def inject_clusters_rubin_psf(image, catalog,
                     # Try cache first
                     cached_psf = None
                     if use_psf_cache and psf_cache is not None:
-                        cached_psf = psf_cache.get('i', cx, cy)  # band hardcoded as 'i' for now
+                        cached_psf = psf_cache.get(band, cx, cy)
                     
                     if cached_psf is not None:
                         psf_gs, fwhm_here = cached_psf
@@ -324,7 +323,7 @@ def inject_clusters_rubin_psf(image, catalog,
                             
                             # Store in cache
                             if use_psf_cache and psf_cache is not None:
-                                psf_cache.put('i', cx, cy, psf_gs, fwhm_here)
+                                psf_cache.put(band, cx, cy, psf_gs, fwhm_here)
                         except Exception as e:
                             n_psf_fallback += 1
                             if verbose and n_psf_fallback <= 5:

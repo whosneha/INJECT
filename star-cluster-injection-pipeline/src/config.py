@@ -27,20 +27,21 @@ class ClusterConfig:
 class InjectionConfig:
     """Top-level configuration for the injection pipeline."""
     run_name            : str          = 'injection_run'
-    band  : str              = 'i'          # single band (default)
-    bands : list[str]        = None     # multi-band (overrides single band if set)
+    band                : str          = 'i'      # single band (default)
+    bands               : list[str]    = None     # multi-band (overrides single band if set)
+    cutout_size         : int          = 1500
     n_clusters          : int          = 100
     seed                : int          = 42
     edge_buffer         : int          = 50      # pixels
     add_noise           : bool         = True
     use_actual_psf      : bool         = True    # False -> Gaussian fallback always
+    psf_fwhm_fallback   : float        = 3.5
     save_injected_image : bool         = False
     output_dir          : str          = 'outputs'
     cluster_config      : ClusterConfig = field(default_factory=ClusterConfig)
     # Butler / coadd info (optional, stored for provenance)
     tract               : Optional[int] = None
     patch               : Optional[int] = None
-    band                : Optional[str] = None
     pixel_scale         : float         = 0.2    # arcsec/pixel
     zero_point          : float         = 27.0
 
@@ -56,9 +57,11 @@ class InjectionConfig:
             f'  run_name    = {self.run_name}\n'
             f'  n_clusters  = {self.n_clusters}\n'
             f'  seed        = {self.seed}\n'
+            f'  cutout_size = {self.cutout_size}\n'
             f'  edge_buffer = {self.edge_buffer} px\n'
             f'  add_noise   = {self.add_noise}\n'
             f'  use_actual_psf = {self.use_actual_psf}\n'
+            f'  psf_fallback = {self.psf_fwhm_fallback} px\n'
             f'  tract/patch/band = {self.tract}/{self.patch}/{self.band}\n'
             f'  profile     = {cc.profile_type}  method={cc.method}\n'
             f'  mag         = [{cc.mag_min}, {cc.mag_max}]\n'
