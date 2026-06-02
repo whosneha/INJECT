@@ -120,35 +120,45 @@ def plot_completeness_1d(retrieval, config,
 
     fig, axes = plt.subplots(1, 2, figsize=figsize)
 
-    # ---- Magnitude ----
-    axes[0].errorbar(bc_mag, comp_mag, yerr=err_mag,
-                     fmt='o-', capsize=4, color=color_mag)
+    # ---- Magnitude (blocky step + 1-sigma band) ----
+    axes[0].step(bc_mag, comp_mag, where='mid', color=color_mag, lw=2,
+                 label='Completeness')
+    axes[0].fill_between(bc_mag, np.clip(comp_mag - err_mag, 0, 1),
+                         np.clip(comp_mag + err_mag, 0, 1),
+                         step='mid', alpha=0.25, color=color_mag,
+                         label='1-sigma binomial error')
     axes[0].axhline(0.5, color='gray', ls='--', lw=1, label='50%')
-    if show_limit:
+    axes[0].axhline(0.9, color='gray', ls=':', lw=1, label='90%')
+    if show_limit and not np.isnan(stats['mag_50_limit']):
         axes[0].axvline(stats['mag_50_limit'], color='red', ls='--', lw=1,
-                        label=f"50% limit = {stats['mag_50_limit']:.2f}")
+                        label=f"50% limit = {stats['mag_50_limit']:.2f} mag")
     axes[0].set_xlabel('Injected magnitude (AB)')
-    axes[0].set_ylabel('Recovery completeness')
+    axes[0].set_ylabel('Completeness')
     axes[0].set_ylim(0, 1.05)
     axes[0].set_title(f"Completeness vs Magnitude\n"
                       f"({stats['n_injected']} clusters, "
                       f"overall {stats['overall_completeness']:.1%})")
-    axes[0].legend()
+    axes[0].legend(loc='lower left')
 
-    # ---- Half-light radius ----
+    # ---- Half-light radius (blocky step + 1-sigma band) ----
     ax2 = axes[1]
-    ax2.errorbar(bc_rh, comp_rh, yerr=err_rh,
-                 fmt='s-', capsize=4, color=color_rh)
+    ax2.step(bc_rh, comp_rh, where='mid', color=color_rh, lw=2,
+             label='Completeness')
+    ax2.fill_between(bc_rh, np.clip(comp_rh - err_rh, 0, 1),
+                     np.clip(comp_rh + err_rh, 0, 1),
+                     step='mid', alpha=0.25, color=color_rh,
+                     label='1-sigma binomial error')
     ax2.axhline(0.5, color='gray', ls='--', lw=1, label='50%')
-    if show_limit:
+    ax2.axhline(0.9, color='gray', ls=':', lw=1, label='90%')
+    if show_limit and not np.isnan(stats['r_half_50_limit']):
         ax2.axvline(stats['r_half_50_limit'], color='red', ls='--', lw=1,
                     label=f"50% limit = {stats['r_half_50_limit']:.2f} px\n"
                           f"= {stats['r_half_50_limit'] * pixel_scale:.2f} arcsec")
     ax2.set_xlabel('Half-light radius (px)')
-    ax2.set_ylabel('Recovery completeness')
+    ax2.set_ylabel('Completeness')
     ax2.set_ylim(0, 1.05)
     ax2.set_title('Completeness vs Half-light radius')
-    ax2.legend()
+    ax2.legend(loc='lower left')
 
     plt.tight_layout()
     return fig, axes
