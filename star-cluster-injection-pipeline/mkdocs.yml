@@ -1,0 +1,80 @@
+site_name: Star Cluster Injection Pipeline Docs
+site_description: End-to-end documentation for installation, workflows, and scientific usage.
+site_url: https://whosneha.github.io/INJECT/
+docs_dir: site_docs
+
+repo_name: INJECT
+repo_url: https://github.com/whosneha/INJECT
+edit_uri: ""
+
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.instant
+    - navigation.instant.progress
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - navigation.footer
+    - content.code.copy
+    - content.tabs.link
+    - search.suggest
+    - search.highlight
+  palette:
+    - scheme: default
+      primary: white
+      accent: black
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [.] 
+          options:
+            show_source: true
+            show_signature_annotations: true
+            docstring_style: google
+            members_order: source
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.details
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+
+extra_css:
+  - assets/stylesheets/extra.css
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Installation: getting-started/installation.md
+      - Quickstart: getting-started/quickstart.md
+  - Guides:
+      - Configuration: guides/configuration.md
+      - Pipeline Workflows: guides/pipeline-workflows.md
+      - Notebooks: guides/notebooks.md
+      - PSF Caching and Performance: guides/psf-caching.md
+      - Detection and Completeness: guides/detection-and-completeness.md
+  - Reference:
+      - CLI and Scripts: reference/cli-and-scripts.md
+      - Python Modules: reference/python-modules.md
+      - Testing: reference/testing.md
+  - Project Notes:
+      - Internal Notes Digest: guides/internal-notes-digest.md

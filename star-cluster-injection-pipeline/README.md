@@ -48,6 +48,36 @@ pip install -r requirements.txt
 
 Explore the provided Jupyter notebooks for tutorials and examples on how to use the pipeline effectively.
 
+## Documentation Website
+
+A full documentation website is included using MkDocs Material.
+
+1. Install docs dependencies:
+
+```bash
+pip install -r docs_requirements.txt
+```
+
+2. Run the local docs server:
+
+```bash
+mkdocs serve
+```
+
+3. Build static docs output:
+
+```bash
+mkdocs build
+```
+
+Docs source files live in `site_docs/` and navigation/settings are in `mkdocs.yml`.
+The Python API reference page is auto-generated from source modules via `mkdocstrings`.
+
+### Publish docs with GitHub Pages
+
+An automated workflow is included at `.github/workflows/docs.yml`.
+It builds docs from `star-cluster-injection-pipeline/` and deploys to GitHub Pages on pushes to `main`.
+
 ## Contributing
 
 Contributions are welcome! Please open an issue or submit a pull request for any enhancements or bug fixes.

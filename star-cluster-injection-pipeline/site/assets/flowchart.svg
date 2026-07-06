@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1360 600" role="img" aria-label="Pipeline flowchart">
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L12,6 L0,12 z" fill="#000"/>
+    </marker>
+    <style>
+      .box { fill: #fff; stroke: #000; stroke-width: 3; }
+      .big { font: 22px Arial, Helvetica, sans-serif; fill: #111; font-weight: 700; }
+      .label { font: 24px Arial, Helvetica, sans-serif; fill: #000; font-style: italic; }
+      .line { stroke: #000; stroke-width: 6; fill: none; marker-end: url(#arrow); }
+    </style>
+  </defs>
+
+  <rect width="1360" height="600" fill="#ffe9cf"/>
+
+  <rect x="40" y="28" width="300" height="230" class="box"/>
+  <text x="190" y="132" text-anchor="middle" class="big">
+    <tspan x="190" dy="0">Rubin</tspan>
+    <tspan x="190" dy="30">Images</tspan>
+  </text>
+  <rect x="20" y="55" width="300" height="230" fill="#fff" stroke="#000" stroke-width="3" opacity="0.45"/>
+  <rect x="60" y="10" width="300" height="230" fill="#fff" stroke="#000" stroke-width="3" opacity="0.45"/>
+  <path d="M40 230 Q100 250 160 230 T340 230 V258 Q340 288 280 292 H110 Q50 292 40 258 Z" fill="#fff" stroke="#000" stroke-width="3"/>
+
+  <text x="228" y="360" text-anchor="middle" class="big">+</text>
+
+  <rect x="40" y="395" width="320" height="185" class="box"/>
+  <text x="200" y="456" text-anchor="middle" class="big">
+    <tspan x="200" dy="0">Synthetic Cluster</tspan>
+    <tspan x="200" dy="30">Catalog</tspan>
+    <tspan x="200" dy="30">Configuration File</tspan>
+  </text>
+  <rect x="20" y="395" width="320" height="185" fill="#fff" stroke="#000" stroke-width="3" opacity="0.45"/>
+
+  <path d="M370 190 L410 190 L410 330" class="line"/>
+  <path d="M370 490 L410 490 L410 330" class="line"/>
+
+  <text x="505" y="220" transform="rotate(-35 505 220)" class="label">Run the pipeline</text>
+  <path d="M420 330 L600 160" class="line"/>
+
+  <rect x="520" y="68" width="390" height="180" rx="22" class="box"/>
+  <text x="715" y="136" text-anchor="middle" class="big">
+    <tspan x="715" dy="0">Rubin Data + Injected</tspan>
+    <tspan x="715" dy="30">Catalog creates Image</tspan>
+  </text>
+
+  <path d="M715 248 L710 355" class="line"/>
+
+  <rect x="520" y="362" width="390" height="162" rx="22" class="box"/>
+  <text x="715" y="422" text-anchor="middle" class="big">
+    <tspan x="715" dy="0">INSERT YOUR</tspan>
+    <tspan x="715" dy="30">Detection Algorithm</tspan>
+    <tspan x="715" dy="30">HERE</tspan>
+  </text>
+
+  <path d="M910 438 L980 330" class="line"/>
+
+  <rect x="1000" y="55" width="330" height="490" rx="40" class="box" fill="#fff"/>
+  <rect x="1035" y="100" width="260" height="115" rx="18" class="box"/>
+  <text x="1165" y="150" text-anchor="middle" class="big">
+    <tspan x="1165" dy="0">Completeness</tspan>
+    <tspan x="1165" dy="30">Curves</tspan>
+  </text>
+
+  <rect x="1035" y="240" width="260" height="115" rx="18" class="box"/>
+  <text x="1165" y="292" text-anchor="middle" class="big">
+    <tspan x="1165" dy="0">Parameter</tspan>
+    <tspan x="1165" dy="30">Recovery</tspan>
+  </text>
+
+  <rect x="1035" y="380" width="260" height="115" rx="18" class="box"/>
+  <text x="1165" y="432" text-anchor="middle" class="big">
+    <tspan x="1165" dy="0">Postage</tspan>
+    <tspan x="1165" dy="30">Stamps</tspan>
+  </text>
+</svg>

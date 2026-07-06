@@ -1,0 +1,181 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{titlesec}
+
+\titleformat{\section}{\large\bfseries}{\thesection.}{0.5em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection.}{0.5em}{}
+
+\setlist[itemize]{leftmargin=1.25em, itemsep=0.25em, topsep=0.25em}
+\setlist[enumerate]{leftmargin=1.5em, itemsep=0.25em, topsep=0.25em}
+
+\title{INJECT and SPECTRA: Updated 2-Month Work Plan}
+\author{Sneha Nair and Pauline Barmby\\Western University\\in conjunction with CANDIAPL}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\noindent This plan is tailored to the current star-cluster injection pipeline, with emphasis on rigorous validation, clearer documentation, and a few high-value improvements that should make the project easier to trust, use, and extend.
+
+\section{Goals}
+
+\begin{enumerate}
+    \item Increase confidence in scientific correctness.
+    \item Make the pipeline easier to run, understand, and reproduce.
+    \item Improve notebook and document quality so results are easier to share.
+    \item Add targeted enhancements that reduce runtime friction without expanding scope too much.
+\end{enumerate}
+
+\section{Priority Areas}
+
+\subsection{Rigorous Testing}
+
+\begin{itemize}
+    \item Expand unit tests for light profiles, PSF convolution, catalog generation, and I/O.
+    \item Add integration tests for full injection and detection flows.
+    \item Add regression tests for known edge cases and failure modes.
+    \item Add reproducibility checks for seeded catalog generation and batch runs.
+    \item Add multiband consistency tests if multiband workflows are part of the intended use case.
+    \item Add performance smoke tests for PSF caching and batch execution.
+\end{itemize}
+
+\subsection{Documentation}
+
+\begin{itemize}
+    \item Clean up the main README so setup, usage, and expected outputs are easy to find.
+    \item Add a short quick start path for notebook users.
+    \item Document the batch pipeline, checkpoints, cache settings, and multiband behavior.
+    \item Add a testing guide that explains how to run unit, integration, and visual verification tests.
+    \item Improve inline notebook narration so the demo notebooks read like a workflow, not just a sequence of cells.
+\end{itemize}
+
+\subsection{Useful Improvements}
+
+\begin{itemize}
+    \item Add CI-friendly test execution if not already present.
+    \item Standardize outputs and file naming for saved catalogs, checkpoints, and plots.
+    \item Add lightweight benchmarking scripts or notebooks for PSF caching and end-to-end runtime.
+    \item Improve validation around input images, catalog bounds, and configuration values.
+    \item Add clearer logging and summary stats for batch runs.
+\end{itemize}
+
+\section{Eight-Week Plan}
+
+\subsection{Weeks 1--2: Baseline and Test Foundation}
+
+\begin{itemize}
+    \item Audit existing tests and identify the highest-risk gaps.
+    \item Add or tighten unit tests around:
+    \begin{itemize}
+        \item \texttt{mag\_to\_flux} and magnitude/flux scaling.
+        \item profile normalization and symmetry.
+        \item PSF convolution flux conservation.
+        \item catalog generation bounds and seeded reproducibility.
+    \end{itemize}
+    \item Convert any ad hoc verification into repeatable assertions.
+    \item Decide which visual checks should remain manual and which can become automated.
+\end{itemize}
+
+\noindent\textbf{Deliverable:} A more reliable test suite that can catch basic scientific and numerical regressions.
+
+\subsection{Weeks 3--4: Integration and Regression Testing}
+
+\begin{itemize}
+    \item Add end-to-end tests for single-band injection and detection.
+    \item Add tests that cover no-PSF, fallback-PSF, and cache-enabled modes.
+    \item Add regression tests for previously observed bugs or fragile behavior.
+    \item Add tests for edge cases such as:
+    \begin{itemize}
+        \item injections near image boundaries,
+        \item very faint clusters,
+        \item very compact or very extended profiles,
+        \item empty or tiny catalogs.
+    \end{itemize}
+    \item If multiband work matters, add a test that verifies the same catalog is applied consistently across bands.
+\end{itemize}
+
+\noindent\textbf{Deliverable:} A test layer that exercises the actual pipeline behavior, not just isolated math.
+
+\subsection{Weeks 5--6: Documentation and Workflow Polish}
+
+\begin{itemize}
+    \item Rewrite or expand the main README for:
+    \begin{itemize}
+        \item installation,
+        \item quick start,
+        \item notebook usage,
+        \item batch execution,
+        \item outputs and checkpoints.
+    \end{itemize}
+    \item Add a concise developer guide for running tests and understanding the repo structure.
+    \item Update notebook introductions and final summary cells so each notebook states:
+    \begin{itemize}
+        \item what it demonstrates,
+        \item what input data it expects,
+        \item what outputs to inspect,
+        \item what limitations remain.
+    \end{itemize}
+    \item Clarify performance notes for PSF caching and batch execution.
+\end{itemize}
+
+\noindent\textbf{Deliverable:} A repo that is easier for a new user to pick up without asking for oral context.
+
+\subsection{Weeks 7--8: Targeted Enhancements and Cleanup}
+
+\begin{itemize}
+    \item Add a small benchmarking workflow for before/after comparisons.
+    \item Improve logging and run summaries so long batch jobs are easier to monitor.
+    \item Tighten config validation and error messages.
+    \item Standardize plot and result outputs where that reduces confusion.
+    \item Revisit any notebook or script that still feels too manual and reduce repetitive steps.
+\end{itemize}
+
+\noindent\textbf{Deliverable:} A more polished and maintainable pipeline with better diagnostics and fewer workflow surprises.
+
+\section{Stretch Ideas}
+
+If time remains after the core work, these are the best next candidates:
+
+\begin{itemize}
+    \item CI automation for tests and notebook smoke checks.
+    \item A small synthetic benchmark dataset for stable regression testing.
+    \item A results summary report that combines completeness curves, detection statistics, and PSF-cache performance.
+    \item A lightweight API cleanup pass so the pipeline interface is easier to use from notebooks and scripts.
+    \item A short tutorial notebook focused on one canonical end-to-end use case.
+\end{itemize}
+
+\section{Success Criteria}
+
+By the end of two months, the project should have:
+
+\begin{itemize}
+    \item Stronger test coverage over the pipeline's most important behaviors.
+    \item Clearer documentation for new and returning users.
+    \item Better reproducibility and fewer manual steps.
+    \item At least one measurable improvement in usability, diagnostics, or runtime workflow.
+\end{itemize}
+
+\section{Suggested Weekly Rhythm}
+
+\begin{itemize}
+    \item Monday: review priorities, test failures, and open questions.
+    \item Midweek: implement and validate the highest-value change.
+    \item Friday: update docs, run the full relevant test slice, and record what changed.
+\end{itemize}
+
+\section{Notes}
+
+\begin{itemize}
+    \item Keep validation close to the code that changed.
+    \item Prefer repeatable tests over notebook-only verification when possible.
+    \item Avoid widening scope unless a test or benchmark shows a real need.
+\end{itemize}
+
+\end{document}
