@@ -1,0 +1,30 @@
+# HTCondor submit template for CANFAR/CADC
+#
+# Usage example:
+#   condor_submit scripts/canfar_submit.condor \
+#     -append "TASKS_FILE=/path/to/canfar_tasks.json" \
+#     -append "N_TASKS=20" \
+#     -append "OUTPUT_ROOT=/path/to/canfar_outputs" \
+#     -append "PYTHON_BIN=/usr/bin/python3"
+
+universe = vanilla
+executable = scripts/canfar_job_wrapper.sh
+getenv = true
+
+# These can be overridden via condor_submit -append
+TASKS_FILE = configs/canfar_tasks.json
+N_TASKS = 1
+OUTPUT_ROOT = canfar_outputs
+PYTHON_BIN = python3
+
+environment = "TASKS_FILE=$(TASKS_FILE) JOB_INDEX=$(Process) OUTPUT_ROOT=$(OUTPUT_ROOT) PYTHON_BIN=$(PYTHON_BIN)"
+
+output = logs/canfar.$(Cluster).$(Process).out
+error = logs/canfar.$(Cluster).$(Process).err
+log = logs/canfar.$(Cluster).log
+
+request_cpus = 2
+request_memory = 4GB
+request_disk = 4GB
+
+queue $(N_TASKS)

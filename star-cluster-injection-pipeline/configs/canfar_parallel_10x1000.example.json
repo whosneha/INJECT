@@ -1,0 +1,23 @@
+{
+  "mode": "tap",
+  "ra": 55.0,
+  "dec": -30.0,
+  "size": 120,
+  "band": "i",
+  "n_iterations": 10,
+  "n_per_iter": 1000,
+  "n_workers": 4,
+  "profile": "plummer",
+  "method": "smooth",
+  "mag_min": 20.0,
+  "mag_max": 24.0,
+  "r_half_min": 3.0,
+  "r_half_max": 20.0,
+  "seed": 42,
+  "detector_spec": "scripts.user_detector_template:detect",
+  "detector_kwargs": {
+    "threshold_abs": 130,
+    "min_distance": 5
+  },
+  "output_dir": "canfar_outputs/batch_10x1000"
+}

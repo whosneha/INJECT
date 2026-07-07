@@ -1,0 +1,45 @@
+{
+  "tasks": [
+    {
+      "name": "tap_field_a_i_band",
+      "mode": "tap",
+      "token_env": "RUBIN_TOKEN",
+      "ra": 55.0,
+      "dec": -30.0,
+      "size": 120,
+      "band": "i",
+      "n_clusters": 50,
+      "profile": "plummer",
+      "method": "smooth",
+      "seed": 1001
+    },
+    {
+      "name": "tap_field_b_r_band",
+      "mode": "tap",
+      "token_env": "RUBIN_TOKEN",
+      "ra": 56.25,
+      "dec": -30.15,
+      "size": 120,
+      "band": "r",
+      "n_clusters": 75,
+      "profile": "king",
+      "method": "smooth",
+      "seed": 1002
+    },
+    {
+      "name": "rsp_tract4431_patch17_i",
+      "mode": "rsp",
+      "repo": "dp02",
+      "collection": "2.2i/runs/DP0.2",
+      "tract": 4431,
+      "patch": 17,
+      "band": "i",
+      "n_clusters": 100,
+      "profile": "plummer",
+      "method": "discrete",
+      "n_stars_min": 100,
+      "n_stars_max": 400,
+      "seed": 2001
+    }
+  ]
+}

@@ -74,11 +74,16 @@ Examples:
     parser.add_argument('--ra', type=float, help='Center RA in degrees (TAP mode)')
     parser.add_argument('--dec', type=float, help='Center Dec in degrees (TAP mode)')
     parser.add_argument('--size', type=float, default=120, help='Cutout size in arcseconds (TAP mode)')
+    parser.add_argument('--output-dir', type=str, default=None,
+                       help='Directory for output artifacts (default: ../plots)')
     
     args = parser.parse_args()
     
-    # Output directory (use existing plots folder)
-    output_dir = os.path.join(os.path.dirname(__file__), '..', 'plots')
+    # Output directory
+    if args.output_dir is None:
+        output_dir = os.path.join(os.path.dirname(__file__), '..', 'plots')
+    else:
+        output_dir = os.path.abspath(args.output_dir)
     os.makedirs(output_dir, exist_ok=True)
     
     # ============ DETERMINE MODE AND INITIALIZE ============

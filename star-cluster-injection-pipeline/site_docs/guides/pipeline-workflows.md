@@ -45,6 +45,13 @@ That is useful when:
 - You train or test methods that rely on multiband morphology.
 - You need one truth table interpreted consistently in each band.
 
+## PSF Fidelity: RSP vs TAP
+
+- RSP/Butler workflows can use Rubin CoaddPsf objects (spatially varying PSF).
+- TAP workflows outside RSP use cutouts plus PSF FWHM metadata and then analytic PSF fallback during injection.
+
+For PSF-sensitive science conclusions, use TAP for large-scale throughput tests, then validate key results with the RSP/Butler PSF path.
+
 ## Output Management Pattern
 
 Recommended per experiment:
