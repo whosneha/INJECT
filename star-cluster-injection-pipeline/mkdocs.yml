@@ -70,6 +70,7 @@ nav:
       - Configuration: guides/configuration.md
       - Pipeline Workflows: guides/pipeline-workflows.md
       - Notebooks: guides/notebooks.md
+      - Plot Gallery: guides/plot-gallery.md
       - PSF Caching and Performance: guides/psf-caching.md
       - Detection and Completeness: guides/detection-and-completeness.md
   - Reference:

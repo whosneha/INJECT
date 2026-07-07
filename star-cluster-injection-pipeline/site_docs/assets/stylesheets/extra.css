@@ -110,6 +110,31 @@
   height: auto;
 }
 
+.plot-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+  margin: 1rem 0 1.5rem;
+}
+
+.plot-gallery figure {
+  margin: 0;
+  padding: 0.75rem;
+  border: 1px solid #000000;
+  background: #fff7ef;
+}
+
+.plot-gallery img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.plot-gallery figcaption {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+}
+
 .flowchart-figure,
 .flowchart-figure img {
   max-width: none;
