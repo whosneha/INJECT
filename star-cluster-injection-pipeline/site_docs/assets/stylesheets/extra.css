@@ -135,6 +135,31 @@
   font-size: 0.9rem;
 }
 
+.notebook-window-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1rem;
+  margin: 1rem 0 1.5rem;
+}
+
+.notebook-window-card {
+  border: 1px solid #000000;
+  background: #fff7ef;
+  padding: 0.75rem;
+}
+
+.notebook-window-card h3 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+}
+
+.notebook-window {
+  width: 100%;
+  min-height: 360px;
+  border: 1px solid #000000;
+  background: #ffffff;
+}
+
 .flowchart-figure,
 .flowchart-figure img {
   max-width: none;

@@ -2,6 +2,45 @@
 
 The project includes notebooks for onboarding, full-pipeline runs, PSF-specific workflows, and diagnostic analysis. This page groups them by use case so users can find the right starting point quickly.
 
+## Notebook Previews
+
+These embedded windows let users quickly browse notebook contents without leaving the docs page.
+
+<div class="notebook-window-grid">
+	<div class="notebook-window-card">
+		<h3>Simple Inject Preview</h3>
+		<iframe
+			class="notebook-window"
+			src="https://nbviewer.org/github/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/simple_inject.ipynb"
+			title="simple_inject notebook preview"
+			loading="lazy">
+		</iframe>
+		<p><a href="https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/simple_inject.ipynb">Open on GitHub</a></p>
+	</div>
+
+	<div class="notebook-window-card">
+		<h3>Batch 10 x 1000 Preview</h3>
+		<iframe
+			class="notebook-window"
+			src="https://nbviewer.org/github/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/simple_batch_injection_demo.ipynb"
+			title="simple_batch_injection_demo notebook preview"
+			loading="lazy">
+		</iframe>
+		<p><a href="https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/simple_batch_injection_demo.ipynb">Open on GitHub</a></p>
+	</div>
+
+	<div class="notebook-window-card">
+		<h3>Multiband Preview</h3>
+		<iframe
+			class="notebook-window"
+			src="https://nbviewer.org/github/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/simple_multiband_injection_demo.ipynb"
+			title="simple_multiband_injection_demo notebook preview"
+			loading="lazy">
+		</iframe>
+		<p><a href="https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/simple_multiband_injection_demo.ipynb">Open on GitHub</a></p>
+	</div>
+</div>
+
 ## Suggested Learning Path
 
 1. [tutorial_injection.ipynb](https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/tutorial_injection.ipynb): conceptual walkthrough.
