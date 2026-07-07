@@ -38,8 +38,3 @@ This page shows a small set of representative outputs from the pipeline so users
   </figure>
 </div>
 
-## How To Use This Page
-
-- Point new users here if they want a fast visual sense of the package.
-- Reuse the images in talks or project overviews.
-- Add new representative plots here as the pipeline evolves.
