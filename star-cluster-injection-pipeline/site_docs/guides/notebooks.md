@@ -2,43 +2,59 @@
 
 The project includes notebooks for onboarding, full-pipeline runs, PSF-specific workflows, and diagnostic analysis. This page groups them by use case so users can find the right starting point quickly.
 
-## Notebook Previews
+## Notebook Code Previews
 
-These embedded windows let users quickly browse notebook contents without leaving the docs page.
+These are representative code cells shown directly in the docs page.
 
-<div class="notebook-window-grid">
-	<div class="notebook-window-card">
-		<h3>Simple Inject Preview</h3>
-		<iframe
-			class="notebook-window"
-			src="https://nbviewer.org/github/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/simple_inject.ipynb"
-			title="simple_inject notebook preview"
-			loading="lazy">
-		</iframe>
-		<p><a href="https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/simple_inject.ipynb">Open on GitHub</a></p>
-	</div>
+<div class="notebook-snippet-grid">
+	<section class="notebook-snippet-card">
+		<h3>simple_inject.ipynb</h3>
+		<p>Minimal single-image injection workflow.</p>
+		<pre><code class="language-python">from src.data_access import RubinDataAccess
+from src.inject import create_injection_catalog, inject_from_catalog
 
-	<div class="notebook-window-card">
-		<h3>Batch 10 x 1000 Preview</h3>
-		<iframe
-			class="notebook-window"
-			src="https://nbviewer.org/github/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/simple_batch_injection_demo.ipynb"
-			title="simple_batch_injection_demo notebook preview"
-			loading="lazy">
-		</iframe>
-		<p><a href="https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/simple_batch_injection_demo.ipynb">Open on GitHub</a></p>
-	</div>
+data = RubinDataAccess(mode="tap", token=RUBIN_TOKEN)
+image, meta = data.load_coadd(ra=55.0, dec=-30.0, size_arcsec=120, band="i")
 
-	<div class="notebook-window-card">
-		<h3>Multiband Preview</h3>
-		<iframe
-			class="notebook-window"
-			src="https://nbviewer.org/github/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/simple_multiband_injection_demo.ipynb"
-			title="simple_multiband_injection_demo notebook preview"
-			loading="lazy">
-		</iframe>
-		<p><a href="https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/simple_multiband_injection_demo.ipynb">Open on GitHub</a></p>
-	</div>
+catalog = create_injection_catalog(
+    n_clusters=10,
+    image_shape=image.shape,
+    mag_range=(20.0, 24.0),
+    r_half_range=(3.0, 20.0),
+    profile_type="plummer",
+    seed=42,
+)
+
+injected_image, info = inject_from_catalog(
+    image,
+    catalog,
+    psf_fwhm=data.get_psf_fwhm(meta),
+)</code></pre>
+	</section>
+
+	<section class="notebook-snippet-card">
+		<h3>simple_batch_injection_demo.ipynb</h3>
+		<p>Canonical 10 x 1000 pooled completeness workflow.</p>
+		<pre><code class="language-bash">python scripts/canfar_parallel_10x1000.py \
+  --config-file configs/canfar_parallel_10x1000.example.json \
+  --detector-spec src.detection:run_cluster_detection \
+  --n-workers 8 \
+  --output-dir canfar_outputs/batch_10x1000</code></pre>
+	</section>
+
+	<section class="notebook-snippet-card">
+		<h3>simple_multiband_injection_demo.ipynb</h3>
+		<p>Run matching injections across multiple bands.</p>
+		<pre><code class="language-python">bands = ["g", "r", "i"]
+
+for band in bands:
+    !python scripts/run_injection.py \
+      --token $RUBIN_TOKEN \
+      --ra 55.0 --dec -30.0 \
+      --band {band} \
+      --n-clusters 20 \
+      --output-dir plots/multiband/{band}</code></pre>
+	</section>
 </div>
 
 ## Suggested Learning Path

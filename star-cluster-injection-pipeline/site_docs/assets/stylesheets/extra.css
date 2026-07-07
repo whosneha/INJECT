@@ -135,27 +135,33 @@
   font-size: 0.9rem;
 }
 
-.notebook-window-grid {
+.notebook-snippet-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 1rem;
   margin: 1rem 0 1.5rem;
 }
 
-.notebook-window-card {
+.notebook-snippet-card {
   border: 1px solid #000000;
   background: #fff7ef;
   padding: 0.75rem;
 }
 
-.notebook-window-card h3 {
+.notebook-snippet-card h3 {
   margin-top: 0;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.35rem;
 }
 
-.notebook-window {
-  width: 100%;
-  min-height: 360px;
+.notebook-snippet-card p {
+  margin-top: 0;
+  margin-bottom: 0.55rem;
+}
+
+.notebook-snippet-card pre {
+  margin: 0;
+  max-height: 320px;
+  overflow: auto;
   border: 1px solid #000000;
   background: #ffffff;
 }
