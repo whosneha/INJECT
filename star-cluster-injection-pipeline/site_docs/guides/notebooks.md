@@ -1,20 +1,88 @@
 # Notebook Guide
 
-The project includes many notebooks for different levels of depth.
+The project includes notebooks for onboarding, full-pipeline runs, PSF-specific workflows, and diagnostic analysis. This page groups them by use case so users can find the right starting point quickly.
 
 ## Suggested Learning Path
 
-1. `tutorial_injection.ipynb`: conceptual walkthrough.
-2. `simple_inject.ipynb`: minimal injection demo.
-3. `simple_multiband_injection_demo.ipynb`: multiband extension.
-4. `full_pipeline_demo.ipynb`: broader pipeline example.
-5. `full_pipeline_rubin_psf.ipynb`: realistic PSF workflow.
+1. [tutorial_injection.ipynb](https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/tutorial_injection.ipynb): conceptual walkthrough.
+2. [simple_inject.ipynb](https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/simple_inject.ipynb): minimal injection demo.
+3. [simple_multiband_injection_demo.ipynb](https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/simple_multiband_injection_demo.ipynb): multiband extension.
+4. [simple_batch_injection_demo.ipynb](https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/simple_batch_injection_demo.ipynb): 10 x 1000 pooled workflow.
+5. [full_pipeline_rubin_psf.ipynb](https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/full_pipeline_rubin_psf.ipynb): realistic PSF workflow.
+
+## Notebook Catalog
+
+### Quickstart And Onboarding
+
+| Notebook | Best for | Notes |
+| --- | --- | --- |
+| [tutorial_injection.ipynb](https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/tutorial_injection.ipynb) | First conceptual pass | Good starting point for new users. |
+| [simple_inject.ipynb](https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/simple_inject.ipynb) | Fastest single-run demo | Minimal injection example. |
+| [simple_rubin_mci_demo.ipynb](https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/simple_rubin_mci_demo.ipynb) | Rubin detection example | Small MCI-style demonstration. |
+
+### Full Pipeline Workflows
+
+| Notebook | Best for | Notes |
+| --- | --- | --- |
+| [full_pipeline_demo.ipynb](https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/full_pipeline_demo.ipynb) | General end-to-end walkthrough | Broader pipeline example. |
+| [full_pipeline_galsim.ipynb](https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/full_pipeline_galsim.ipynb) | GalSim-centered workflow | Useful for simulation-oriented testing. |
+| [full_pipeline_actual_psf.ipynb](https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/full_pipeline_actual_psf.ipynb) | Realistic PSF path | Focuses on actual PSF usage. |
+| [full_pipeline_rubin_psf.ipynb](https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/full_pipeline_rubin_psf.ipynb) | Best high-fidelity Rubin example | Strong reference for PSF-aware runs. |
+| [injection_pipeline_rsp.ipynb](https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/injection_pipeline_rsp.ipynb) | RSP-specific execution | Useful when running directly in Rubin environment. |
+
+### Batch, Parallel, And Recovery Studies
+
+| Notebook | Best for | Notes |
+| --- | --- | --- |
+| [simple_batch_injection_demo.ipynb](https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/simple_batch_injection_demo.ipynb) | Canonical 10 x 1000 run pattern | Matches the pooled completeness workflow. |
+| [multi_injection_rubin_psf.ipynb](https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/multi_injection_rubin_psf.ipynb) | Multi-injection analysis | Good for repeated recovery tests. |
+| [multi_injection_pipeline_with_diagnostics_rsp.ipynb](https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/multi_injection_pipeline_with_diagnostics_rsp.ipynb) | Batch + diagnostics on RSP | Useful when comparing iteration-level outputs. |
+| [example_completeness.ipynb](https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/example_completeness.ipynb) | Completeness curve interpretation | Smaller focused analysis notebook. |
+
+### Multiband Workflows
+
+| Notebook | Best for | Notes |
+| --- | --- | --- |
+| [simple_multiband_injection_demo.ipynb](https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/simple_multiband_injection_demo.ipynb) | First multiband run | Recommended starting point for multiband users. |
+| [full_pipeline_rubin_psf_poster.ipynb](https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/full_pipeline_rubin_psf_poster.ipynb) | Presentation-oriented multiband outputs | Good for figures and outreach. |
+
+### PSF And Performance Diagnostics
+
+| Notebook | Best for | Notes |
+| --- | --- | --- |
+| [test_psf_extraction.ipynb](https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/test_psf_extraction.ipynb) | Verifying PSF extraction | Use when debugging PSF inputs. |
+| [PSF_Caching_Benchmark_Analysis.ipynb](https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/PSF_Caching_Benchmark_Analysis.ipynb) | Cache benchmark analysis | Focused on speedups and cache behavior. |
+| [PSF_Caching_RealData_Benchmark.ipynb](https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/PSF_Caching_RealData_Benchmark.ipynb) | Real-data benchmark | Compare performance on realistic image products. |
+
+### Plotting And Figure Production
+
+| Notebook | Best for | Notes |
+| --- | --- | --- |
+| [injection_demo_plots.ipynb](https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/injection_demo_plots.ipynb) | Demo-quality figures | Useful for documentation or talks. |
+| [poster_stamp_figures.ipynb](https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/poster_stamp_figures.ipynb) | Postage stamp figure generation | Good for presentation summaries. |
+
+### Experimental Or Scratch Notebooks
+
+These are useful for development history, but are usually not the best first stop for new users:
+
+- [injecter_tester.ipynb](https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/injecter_tester.ipynb)
+- [test_injection_rsp.ipynb](https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/test_injection_rsp.ipynb)
+- [tester111.ipynb](https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/tester111.ipynb)
+- [Untitled-1.ipynb](https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/Untitled-1.ipynb)
 
 ## Notebook Setup Tips
 
 - Use the same Python environment as your package install.
 - Restart kernel after dependency changes.
 - Keep relative paths anchored to `star-cluster-injection-pipeline`.
+
+## Best Notebook By Goal
+
+- Learn the pipeline: [tutorial_injection.ipynb](https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/tutorial_injection.ipynb)
+- Run a minimal example: [simple_inject.ipynb](https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/simple_inject.ipynb)
+- Do multiband injections: [simple_multiband_injection_demo.ipynb](https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/simple_multiband_injection_demo.ipynb)
+- Reproduce the pooled 10 x 1000 workflow: [simple_batch_injection_demo.ipynb](https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/simple_batch_injection_demo.ipynb)
+- Study PSF performance: [PSF_Caching_Benchmark_Analysis.ipynb](https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/PSF_Caching_Benchmark_Analysis.ipynb)
 
 ## Good Notebook Habits For Reproducibility
 
