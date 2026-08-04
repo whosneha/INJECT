@@ -8,7 +8,7 @@ This repository is prepared for the two deployment paths that are feasible from 
 ## Package Build
 
 ```bash
-cd star-cluster-injection-pipeline
+cd INJECT
 pip install -e ".[dev]"
 python -m build
 twine check dist/*
@@ -19,7 +19,7 @@ twine check dist/*
 Build the image:
 
 ```bash
-cd star-cluster-injection-pipeline
+cd INJECT
 docker build -t harbor.canfar.net/candiapl/inject:0.1.0 .
 ```
 

@@ -4,7 +4,7 @@ This quickstart walks through a first packaged run and a minimal Python usage pa
 
 ## Run A First Injection
 
-From `star-cluster-injection-pipeline`:
+From the repository root:
 
 ```bash
 injection-pipeline \

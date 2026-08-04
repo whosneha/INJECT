@@ -69,10 +69,10 @@ jupyter = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/snehanair/star-cluster-injection-pipeline"
+Homepage = "https://github.com/whosneha/INJECT"
 Documentation = "https://star-cluster-injection-pipeline.readthedocs.io"
-Repository = "https://github.com/snehanair/star-cluster-injection-pipeline.git"
-Issues = "https://github.com/snehanair/star-cluster-injection-pipeline/issues"
+Repository = "https://github.com/whosneha/INJECT.git"
+Issues = "https://github.com/whosneha/INJECT/issues"
 
 [project.scripts]
 injection-pipeline = "star_cluster_injection.cli:main"

@@ -1,50 +1,49 @@
-# INJECT
+# Star Cluster Injection Pipeline
 
-INJECT is a Rubin/LSST-oriented star cluster injection pipeline for running injection-recovery experiments, testing detection behavior, and estimating completeness under user-controlled assumptions.
+[![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-The main Python package and documentation source live in [`star-cluster-injection-pipeline/`](star-cluster-injection-pipeline/).
+INJECT is a Rubin/LSST-oriented pipeline for injecting artificial star clusters into imaging data, running recovery experiments, and estimating completeness under user-controlled assumptions.
 
-## What This Repository Contains
+## What It Supports
 
-- A pip-installable Python package for synthetic star-cluster injection.
-- Command-line and Python workflows for mock data, TAP access, and Rubin Butler/RSP usage.
-- MkDocs / Read the Docs documentation for installation, use cases, customization, and testing.
-- Deployment scaffolding for package builds and Harbor-ready container builds.
+- Smooth or discrete-star cluster generation.
+- Multiple light-profile families: King, Plummer, EFF, and Sersic.
+- Rubin Butler/RSP access or token-based TAP access.
+- PSF-aware injections with Rubin mask-flag tracking.
+- Batch workflows for repeated injection-recovery studies.
+- MkDocs/Read the Docs documentation and a pip-installable package layout.
 
-## Quick Start
-
-Clone the repository and install the package from the project directory:
+## Installation
 
 ```bash
 git clone https://github.com/whosneha/INJECT.git
-cd INJECT/star-cluster-injection-pipeline
+cd INJECT
 python -m venv .venv
 source .venv/bin/activate
 pip install -U pip
 pip install -e ".[dev,docs]"
 ```
 
-Run a first local mock-data injection:
+## First Run
+
+Run a local mock-data injection:
 
 ```bash
 injection-pipeline --n-clusters 10 --band i --profile plummer --method smooth
 ```
 
-This writes output files to `star-cluster-injection-pipeline/outputs/` by default.
+That writes output files to `outputs/` by default.
 
-## Common Run Modes
-
-Token-based TAP access:
+For a TAP-mode run:
 
 ```bash
-cd star-cluster-injection-pipeline
 injection-pipeline --token YOUR_TOKEN --ra 55.0 --dec -30.0 --band i --n-clusters 10
 ```
 
-Rubin Butler / RSP access:
+For Butler/RSP:
 
 ```bash
-cd star-cluster-injection-pipeline
 injection-pipeline \
   --repo /repo/main \
   --collection YOUR_COLLECTION \
@@ -54,7 +53,7 @@ injection-pipeline \
   --n-clusters 10
 ```
 
-## Python Usage
+## Python API
 
 ```python
 import numpy as np
@@ -68,37 +67,27 @@ pipeline.load_data(image=image)
 catalog = pipeline.generate_catalog()
 ```
 
-## Validation And Build Commands
-
-From `star-cluster-injection-pipeline/`:
+## Testing And Packaging
 
 ```bash
 pytest
-python -m build --no-isolation
+python -m build
 mkdocs build
-python -m twine check dist/star_cluster_injection_pipeline-0.1.0.tar.gz dist/star_cluster_injection_pipeline-0.1.0-py3-none-any.whl
 ```
+
+## Deployment Paths
+
+This repository now includes two release-ready delivery paths:
+
+- A pip-installable Python package via [pyproject.toml](pyproject.toml).
+- A container build via [Dockerfile](Dockerfile) that can be tagged for Harbor.
+
+Additional deployment notes are in [DEPLOYMENT.md](DEPLOYMENT.md) and the docs page [site_docs/guides/deployment.md](site_docs/guides/deployment.md).
 
 ## Documentation
 
-- Package README: [`star-cluster-injection-pipeline/README.md`](star-cluster-injection-pipeline/README.md)
-- Installation guide: [`star-cluster-injection-pipeline/site_docs/getting-started/installation.md`](star-cluster-injection-pipeline/site_docs/getting-started/installation.md)
-- Use cases: [`star-cluster-injection-pipeline/site_docs/guides/use-cases.md`](star-cluster-injection-pipeline/site_docs/guides/use-cases.md)
-- Customization guide: [`star-cluster-injection-pipeline/site_docs/guides/customization.md`](star-cluster-injection-pipeline/site_docs/guides/customization.md)
-- Deployment guide: [`star-cluster-injection-pipeline/site_docs/guides/deployment.md`](star-cluster-injection-pipeline/site_docs/guides/deployment.md)
-
-## Repository Layout
-
-```text
-INJECT/
-├── README.md
-└── star-cluster-injection-pipeline/
-    ├── pyproject.toml
-    ├── README.md
-    ├── src/
-    ├── tests/
-    ├── site_docs/
-    ├── notebooks/
-    ├── configs/
-    └── Dockerfile
-```
+- Read the Docs / MkDocs source: [site_docs](site_docs)
+- Installation guide: [site_docs/getting-started/installation.md](site_docs/getting-started/installation.md)
+- Use cases: [site_docs/guides/use-cases.md](site_docs/guides/use-cases.md)
+- Customization guide: [site_docs/guides/customization.md](site_docs/guides/customization.md)
+- Testing reference: [site_docs/reference/testing.md](site_docs/reference/testing.md)

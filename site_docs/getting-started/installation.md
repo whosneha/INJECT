@@ -11,7 +11,7 @@
 
 ```bash
 git clone <your-repo-url>
-cd INJECT/star-cluster-injection-pipeline
+cd INJECT
 ```
 
 ## 2. Create And Activate A Virtual Environment

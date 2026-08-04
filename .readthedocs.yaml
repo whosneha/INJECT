@@ -6,11 +6,11 @@ build:
     python: "3.11"
 
 mkdocs:
-  configuration: star-cluster-injection-pipeline/mkdocs.yml
+  configuration: mkdocs.yml
 
 python:
   install:
-    - requirements: star-cluster-injection-pipeline/docs_requirements.txt
-    - requirements: star-cluster-injection-pipeline/requirements.txt
+    - requirements: docs_requirements.txt
+    - requirements: requirements.txt
     - method: pip
-      path: star-cluster-injection-pipeline
+      path: .

@@ -136,7 +136,7 @@ pip install star-cluster-injection-pipeline
 ### 2. From Source (editable development)
 ```bash
 git clone https://github.com/yourusername/star-cluster-injection-pipeline.git
-cd star-cluster-injection-pipeline
+cd INJECT
 pip install -e .
 ```
 

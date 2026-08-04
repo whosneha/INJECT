@@ -4,10 +4,10 @@ on:
   push:
     branches: [main]
     paths:
-      - "star-cluster-injection-pipeline/mkdocs.yml"
-      - "star-cluster-injection-pipeline/docs_requirements.txt"
-      - "star-cluster-injection-pipeline/site_docs/**"
-      - "star-cluster-injection-pipeline/src/**"
+      - "mkdocs.yml"
+      - "docs_requirements.txt"
+      - "site_docs/**"
+      - "src/**"
       - ".readthedocs.yaml"
       - ".github/workflows/docs.yml"
   workflow_dispatch:
@@ -24,9 +24,6 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: star-cluster-injection-pipeline
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -90,7 +87,7 @@ PY
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: star-cluster-injection-pipeline/site
+          path: site
 
   deploy:
     environment:
