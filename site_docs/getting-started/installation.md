@@ -41,6 +41,21 @@ cd INJECT
 
 ## 3. Install The Package
 
+`pip` is the tool that installs this repository as a Python package into your active environment.
+
+When you run `pip install ...`, it:
+
+- reads the package metadata from `pyproject.toml`
+- installs the required dependencies
+- makes `star_cluster_injection` importable from Python and notebooks
+- installs the `injection-pipeline` command-line entry point
+
+The most common install patterns are:
+
+- Standard install from a local clone: `pip install .`
+- Editable install for development and notebooks: `pip install -e ".[dev,docs,jupyter]"`
+- Direct install from GitHub: `pip install "git+https://github.com/whosneha/INJECT.git"`
+
 For a standard user install:
 
 ```bash

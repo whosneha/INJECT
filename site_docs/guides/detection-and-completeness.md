@@ -25,6 +25,46 @@ or in batch mode:
 iterations = pipe.run_batch(..., detector_fn=my_detector)
 ```
 
+## Detector Plug-In Contract
+
+There are two common ways to call a user detector:
+
+- `pipe.run_batch(..., detector_fn=my_detector)`
+- `pipe.detect_with(my_detector, image=..., **detector_kwargs)`
+
+Required input contract:
+
+- In batch mode, your detector must accept the injected image as its first positional argument: `my_detector(image)`.
+- In direct detection mode, your detector must accept the injected image as its first positional argument and may also accept extra keyword arguments: `my_detector(image, **kwargs)`.
+- `image` will be a 2D array in the same pixel coordinate system used for injection.
+
+Required output contract:
+
+- Return `list[dict]`.
+- Each dict must contain at least:
+  - `x`: detected x position in pixels
+  - `y`: detected y position in pixels
+
+Minimal valid example:
+
+```python
+def my_detector(image):
+    return [
+        {"x": 143.2, "y": 287.5},
+        {"x": 412.0, "y": 98.4},
+    ]
+```
+
+Valid richer example:
+
+```python
+def my_detector(image, threshold=5.0):
+    return [
+        {"x": 143.2, "y": 287.5, "snr": 7.1, "flux": 1530.0, "flag": 0},
+        {"x": 412.0, "y": 98.4, "snr": 5.4, "r_half": 3.8, "ellipticity": 0.12},
+    ]
+```
+
 ## Truth Matching
 
 Match detections against injected truth entries using configurable radius and quality filters.

@@ -43,6 +43,17 @@ Current scope note:
 
 ## Installation
 
+`pip` is what turns this repository into an installed Python package in your environment. That matters for two reasons:
+
+- It installs the runtime dependencies declared in `pyproject.toml`.
+- It registers the package and CLI so notebooks can import `star_cluster_injection` and terminals can run `injection-pipeline`.
+
+Most users will use one of these three install patterns:
+
+- Install from a cloned repository for normal use: `pip install .`
+- Install in editable mode while developing or running notebooks from the repo: `pip install -e ".[dev,docs,jupyter]"`
+- Install directly from GitHub without manually cloning first: `pip install "git+https://github.com/whosneha/INJECT.git"`
+
 ```bash
 git clone https://github.com/whosneha/INJECT.git
 cd INJECT
@@ -144,6 +155,14 @@ The pipeline is designed so users can bring their own detector instead of rewrit
 
 In batch workflows, you pass a callable as `detector_fn`, and the pipeline applies it to the injected image before truth matching and completeness analysis.
 
+Detector contract:
+
+- For `run_batch(...)`, your detector must accept the injected image as its first argument: `detector_fn(image)`.
+- For `detect_with(...)`, your detector must accept the injected image as its first argument and may also accept extra keyword arguments: `detector_fn(image, **kwargs)`.
+- Your detector must return `list[dict]`.
+- Each returned dictionary must include at least `x` and `y` in the pixel coordinate system of the injected image.
+- Optional but useful fields include `flux`, `magnitude`, `snr`, `r_half`, `flag`, `area`, and `ellipticity`.
+
 ```python
 iterations = pipe.run_batch(
     n_iterations=10,
@@ -155,7 +174,14 @@ iterations = pipe.run_batch(
 )
 ```
 
-The docs and notebooks describe the expected detection catalog shape so users can plug in their own method cleanly.
+Minimal output example:
+
+```python
+[
+    {"x": 143.2, "y": 287.5},
+    {"x": 412.0, "y": 98.4, "snr": 7.1, "flux": 1530.0},
+]
+```
 
 ## Python API
 
@@ -196,3 +222,21 @@ Additional deployment notes are in [DEPLOYMENT.md](DEPLOYMENT.md) and the docs p
 - Use cases: [site_docs/guides/use-cases.md](site_docs/guides/use-cases.md)
 - Customization guide: [site_docs/guides/customization.md](site_docs/guides/customization.md)
 - Testing reference: [site_docs/reference/testing.md](site_docs/reference/testing.md)
+
+## Pip Vs Clone
+
+`pip` can install the package without you manually cloning the repository first, but that only gives you the installed software, not the full working tree of notebooks, configs, and scripts.
+
+If you only want the packaged code and CLI:
+
+```bash
+pip install "git+https://github.com/whosneha/INJECT.git"
+```
+
+If you want to use the notebooks, example configs, or edit the code yourself, clone the repository first and then install from that folder:
+
+```bash
+git clone https://github.com/whosneha/INJECT.git
+cd INJECT
+pip install -e ".[dev,docs,jupyter]"
+```

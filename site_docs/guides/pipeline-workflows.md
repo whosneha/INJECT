@@ -64,6 +64,12 @@ iterations = pipe.run_batch(
 )
 ```
 
+Detector expectations for this workflow:
+
+- The detector callable must accept the injected image as its first argument.
+- In `run_batch(...)`, the pipeline calls it as `detector_fn(injected_image)`.
+- The detector must return `list[dict]` with at least `x` and `y` for each detection.
+
 ## Workflow D: Multiband Batch
 
 `run_batch_multiband(...)` keeps injected cluster positions aligned across all active bands.
