@@ -2,11 +2,42 @@
 
 The project includes notebooks for onboarding, full-pipeline runs, PSF-specific workflows, and diagnostic analysis. This page groups them by use case so users can find the right starting point quickly.
 
-For high-fidelity science use, treat the RSP notebooks as the primary entry point.
+For most users, the easiest starting point is the TAP/local workflow plus the two main example notebooks below.
 
-- RSP notebooks are the preferred path when you want Rubin-native PSF handling.
-- TAP and local runs are still useful for demos, lightweight tests, and exploratory work.
+- TAP and local runs are the main lightweight usage path for development, demos, and exploratory work.
 - Outside RSP, PSF handling falls back to the GalSim-based path instead of Rubin-native PSF computation.
+- Use RSP notebooks when you specifically need Rubin-native PSF handling.
+
+Before opening the RSP notebooks, copy or clone the repository into your RSP workspace so the notebooks, scripts, and package code are all available in the same environment.
+
+In RSP JupyterLab, the usual pattern is:
+
+1. Start JupyterLab.
+2. Open `File` -> `New` -> `Terminal`.
+3. Clone the repository from that terminal.
+4. Install it from the cloned folder so notebook imports work.
+
+```bash
+cd ~/repos
+git clone https://github.com/whosneha/INJECT.git
+cd INJECT
+pip install -e ".[dev,docs,jupyter]"
+```
+
+If your working copy is not yet on GitHub, upload or copy the repository folder into RSP first and run the install command from that copied folder.
+
+After that, open notebooks from the cloned `INJECT/` directory and call the pipeline with normal imports such as:
+
+```python
+from star_cluster_injection import InjectionConfig, InjectionPipeline
+```
+
+## Main Example Notebooks
+
+These are the two clearest examples of the intended usage patterns:
+
+- [simple_rubin_mci_demo.ipynb](https://github.com/whosneha/INJECT/blob/main/notebooks/simple_rubin_mci_demo.ipynb): simple single-run workflow with Rubin-style detection logic.
+- [simple_batch_injection_demo.ipynb](https://github.com/whosneha/INJECT/blob/main/notebooks/simple_batch_injection_demo.ipynb): repeated 10 x 1000-style pooled workflow for completeness studies.
 
 ## Notebook Code Previews
 
@@ -65,11 +96,11 @@ for band in bands:
 
 ## Suggested Learning Path
 
-1. [tutorial_injection.ipynb](https://github.com/whosneha/INJECT/blob/main/notebooks/tutorial_injection.ipynb): conceptual walkthrough.
-2. [simple_inject.ipynb](https://github.com/whosneha/INJECT/blob/main/notebooks/simple_inject.ipynb): minimal injection demo.
-3. [simple_multiband_injection_demo.ipynb](https://github.com/whosneha/INJECT/blob/main/notebooks/simple_multiband_injection_demo.ipynb): multiband extension.
-4. [simple_batch_injection_demo.ipynb](https://github.com/whosneha/INJECT/blob/main/notebooks/simple_batch_injection_demo.ipynb): 10 x 1000 pooled workflow.
-5. [full_pipeline_rubin_psf.ipynb](https://github.com/whosneha/INJECT/blob/main/notebooks/full_pipeline_rubin_psf.ipynb): realistic PSF workflow.
+1. [simple_rubin_mci_demo.ipynb](https://github.com/whosneha/INJECT/blob/main/notebooks/simple_rubin_mci_demo.ipynb): simplest detector-facing workflow.
+2. [simple_batch_injection_demo.ipynb](https://github.com/whosneha/INJECT/blob/main/notebooks/simple_batch_injection_demo.ipynb): pooled repeated-run workflow.
+3. [simple_inject.ipynb](https://github.com/whosneha/INJECT/blob/main/notebooks/simple_inject.ipynb): minimal injection demo.
+4. [simple_multiband_injection_demo.ipynb](https://github.com/whosneha/INJECT/blob/main/notebooks/simple_multiband_injection_demo.ipynb): multiband extension.
+5. [full_pipeline_rubin_psf.ipynb](https://github.com/whosneha/INJECT/blob/main/notebooks/full_pipeline_rubin_psf.ipynb): realistic PSF workflow on RSP.
 
 ## Best RSP Starting Points
 
@@ -78,15 +109,27 @@ for band in bands:
 - [full_pipeline_rubin_psf.ipynb](https://github.com/whosneha/INJECT/blob/main/notebooks/full_pipeline_rubin_psf.ipynb)
 - [multi_injection_pipeline_with_diagnostics_rsp.ipynb](https://github.com/whosneha/INJECT/blob/main/notebooks/multi_injection_pipeline_with_diagnostics_rsp.ipynb)
 
+Recommended RSP order:
+
+1. Copy or clone the repo into your RSP workspace.
+2. Install the package in the RSP notebook environment.
+3. Start with `tutorial_injection.ipynb` or `injection_pipeline_rsp.ipynb`.
+4. Move to `full_pipeline_rubin_psf.ipynb` once you want Rubin-native PSF behavior.
+
+If you want one simple pair of notebooks to explain the two main operating styles:
+
+- Normal / first-run workflow: [simple_rubin_mci_demo.ipynb](https://github.com/whosneha/INJECT/blob/main/notebooks/simple_rubin_mci_demo.ipynb)
+- Batch workflow: [simple_batch_injection_demo.ipynb](https://github.com/whosneha/INJECT/blob/main/notebooks/simple_batch_injection_demo.ipynb)
+
 ## Notebook Catalog
 
 ### Quickstart And Onboarding
 
 | Notebook | Best for | Notes |
 | --- | --- | --- |
-| [tutorial_injection.ipynb](https://github.com/whosneha/INJECT/blob/main/notebooks/tutorial_injection.ipynb) | First conceptual pass | Good starting point for new users. |
+| [tutorial_injection.ipynb](https://github.com/whosneha/INJECT/blob/main/notebooks/tutorial_injection.ipynb) | First conceptual pass | Good background notebook. |
 | [simple_inject.ipynb](https://github.com/whosneha/INJECT/blob/main/notebooks/simple_inject.ipynb) | Fastest single-run demo | Minimal injection example. |
-| [simple_rubin_mci_demo.ipynb](https://github.com/whosneha/INJECT/blob/main/notebooks/simple_rubin_mci_demo.ipynb) | Rubin detection example | Small MCI-style demonstration. |
+| [simple_rubin_mci_demo.ipynb](https://github.com/whosneha/INJECT/blob/main/notebooks/simple_rubin_mci_demo.ipynb) | Main single-run example | Best compact example of the simple usage path. |
 
 ### Full Pipeline Workflows
 
@@ -144,7 +187,7 @@ These are useful for development history, but are usually not the best first sto
 
 ## Best Notebook By Goal
 
-- Learn the pipeline: [tutorial_injection.ipynb](https://github.com/whosneha/INJECT/blob/main/notebooks/tutorial_injection.ipynb)
+- Learn the pipeline: [simple_rubin_mci_demo.ipynb](https://github.com/whosneha/INJECT/blob/main/notebooks/simple_rubin_mci_demo.ipynb)
 - Run a minimal example: [simple_inject.ipynb](https://github.com/whosneha/INJECT/blob/main/notebooks/simple_inject.ipynb)
 - Do multiband injections: [simple_multiband_injection_demo.ipynb](https://github.com/whosneha/INJECT/blob/main/notebooks/simple_multiband_injection_demo.ipynb)
 - Reproduce the pooled 10 x 1000 workflow: [simple_batch_injection_demo.ipynb](https://github.com/whosneha/INJECT/blob/main/notebooks/simple_batch_injection_demo.ipynb)

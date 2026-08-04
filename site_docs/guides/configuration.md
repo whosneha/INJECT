@@ -1,13 +1,13 @@
 # Configuration
 
-The pipeline behavior is controlled through `InjectionConfig`, `ClusterConfig`, and YAML-style parameter presets.
+The pipeline behavior is controlled through `InjectionConfig`, `ClusterConfig`, and lightweight JSON/YAML parameter presets used by scripts and shared run recipes.
 
 ## Configuration Surfaces
 
 - `InjectionConfig`: run-wide behavior such as band selection, number of clusters, PSF strategy, and output handling.
 - `ClusterConfig`: the cluster population itself, including magnitude range, radius range, age range, and profile family.
 - CLI arguments or scripts: useful for one-off runs and quick experiments.
-- YAML or JSON files: useful for reproducible campaigns and shared compute execution.
+- YAML or JSON files: useful for reproducible campaigns, script inputs, and shared compute execution.
 
 ## Core Controls
 
@@ -46,7 +46,9 @@ config = InjectionConfig(
 
 Starter config: `configs/injection_config.yaml`
 
-Use YAML when you need reproducible run recipes across collaborators and compute environments.
+Use YAML when you need a compact human-readable run recipe across collaborators and compute environments.
+
+This starter file is a field-aligned preset for the current `InjectionConfig` and `ClusterConfig` structure. It is meant as a clean template to copy and adapt, not as proof of a generic `InjectionConfig.from_yaml(...)` loader in the core API.
 
 ## Practical Defaults
 

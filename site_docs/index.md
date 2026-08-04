@@ -21,10 +21,11 @@
 
 ## What Users Usually Do
 
-- Run a quick mock-data injection locally to validate environment setup.
-- Switch to TAP-mode cutouts for remote, lightweight Rubin access.
+- Use TAP-mode cutouts from a local or non-RSP environment for lightweight runs.
+- Treat that TAP/local path as the main easy-entry workflow; it uses fallback PSF handling rather than Rubin-native PSF computation.
+- Follow the simple single-run workflow shown in `simple_rubin_mci_demo.ipynb`.
+- Follow the pooled repeated-run workflow shown in `simple_batch_injection_demo.ipynb`.
 - Use Butler/RSP mode for higher-fidelity PSF-aware runs on Rubin infrastructure.
-- Run repeated batches to build recovery curves and completeness summaries.
 - Save configuration snapshots and outputs so science comparisons stay reproducible.
 
 ## Who This Is For
@@ -35,8 +36,17 @@
 
 ## Doesn't Rubin already have an INJECT tool?
 
-- Rubin already includes injection tooling, but this project is meant to be more experimental and configurable for cluster-centric studies.
-- The main differentiators here are profile choice, discrete-star generation, parameter sweeps, PSF-focused experimentation, and user-controlled downstream benchmarking.
+- Rubin already includes injection tooling, including visit-level pipeline workflows.
+- This project is best understood as a complementary cluster-injection and benchmarking package with a notebook-friendly Python API.
+- The main differentiators here are profile choice, discrete-star generation, parameter sweeps, multiband experimentation, and user-controlled downstream benchmarking.
+- This project also makes it easier to plug in your own detection method and evaluate recovery with your own science-driven measurement choices.
+
+## Scope Notes
+
+- The packaged Rubin-facing workflow in this repo is coadd-first.
+- Single-band and multiband workflows are both supported.
+- Users can inject into arbitrary 2D image arrays through the Python API.
+- Native Butler-backed single-visit loading is not yet implemented as a first-class packaged workflow.
 
 ## Quick Links
 

@@ -13,6 +13,13 @@ INJECT is most valuable when users tune it to their own science case rather than
 - Batch size, iteration count, and cache settings.
 - Detection pipeline integration and output storage conventions.
 
+Current packaged data-loading scope:
+
+- Butler-backed Rubin workflows are coadd-based.
+- Multiband Butler loading is supported across the configured active bands.
+- If you already have a single-visit image array in memory, you can still inject into it through `load_data(image=...)`.
+- Native Butler-backed single-visit or `calexp` loading is not yet exposed as a first-class workflow in this repo.
+
 ## Most Important Tradeoffs
 
 - Smooth vs discrete:

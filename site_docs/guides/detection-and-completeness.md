@@ -11,6 +11,20 @@ After injecting clusters, run your detector and store candidate catalogs with cl
 - Flux or magnitude estimate
 - Quality flags / SNR
 
+The detector is intentionally user-supplied. The pipeline is designed so you can plug in your own callable cleanly rather than rewriting the injection machinery.
+
+Typical pattern:
+
+```python
+detections = my_detector(injected_image)
+```
+
+or in batch mode:
+
+```python
+iterations = pipe.run_batch(..., detector_fn=my_detector)
+```
+
 ## Truth Matching
 
 Match detections against injected truth entries using configurable radius and quality filters.
@@ -117,5 +131,6 @@ When running on RSP/Butler coadds, the pipeline can annotate each injected sourc
 
 - Default behavior: keep the injection and record the flags in `injection_info`.
 - Strict behavior: set `skip_bad_psf_regions=True` to exclude those locations before injection.
+- Fallback behavior: when Rubin-native PSF evaluation cannot be used, the injection code can fall back to the GalSim-based PSF approximation path.
 
 This keeps throughput studies aligned with Rubin's local PSF model while still exposing where the PSF was marked inexact or edge-affected.

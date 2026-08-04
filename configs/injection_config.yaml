@@ -1,187 +1,27 @@
-# =============================================================================
-# STAR CLUSTER INJECTION PIPELINE - CONFIGURATION FILE
-# =============================================================================
-# 
-# This pipeline follows the Rubin source injection methodology:
-# https://pipelines.lsst.io/modules/lsst.source.injection/
-#
-# Key features:
-# - Uses actual PSF from coadd exposures (spatially varying)
-# - Proper flux calibration using zeropoint
-# - GalSim-based convolution for accuracy
-#
-# Usage:
-#   from src.config import InjectionConfig
-#   config = InjectionConfig.from_yaml('configs/my_config.yaml')
-#
-
-# -----------------------------------------------------------------------------
-# RUN IDENTIFICATION
-# -----------------------------------------------------------------------------
-run_name: "my_injection_run"
-description: "Star cluster injection following Rubin tutorial methodology"
-
-# -----------------------------------------------------------------------------
-# DATA SOURCE (RSP Butler)
-# -----------------------------------------------------------------------------
-# Configure for your specific data access
-# See: https://pipelines.lsst.io/modules/lsst.daf.butler/
-repo: "dp02"
-collection: "2.2i/runs/DP0.2"
-tract: 4431
-patch: 17
-band: "i"  # Options: u, g, r, i, z, y
-
-# -----------------------------------------------------------------------------
-# NUMBER OF CLUSTERS
-# -----------------------------------------------------------------------------
+run_name: rsp_i_band_example
+band: i
 n_clusters: 100
-
-# -----------------------------------------------------------------------------
-# CLUSTER CONFIGURATION
-# -----------------------------------------------------------------------------
-cluster_config:
-  
-  # ===========================================================================
-  # GENERATION METHOD
-  # ===========================================================================
-  # smooth  = one 2D integrated light profile per cluster (extended source)
-  #           -> no individual stars, just an analytical surface brightness map
-  # discrete = each cluster is N individual point-source stars placed by IMF
-  #           -> each star is a delta function convolved with the PSF
-  method: "smooth"   # <-- 'smooth' recommended for distant/unresolved clusters
-  
-  # ===========================================================================
-  # SPATIAL PROFILE
-  # ===========================================================================
-  profile_type: "plummer"  # 'plummer', 'king', 'eff', 'sersic'
-  
-  # ===========================================================================
-  # MAGNITUDE RANGE
-  # ===========================================================================
-  mag_min: 19.0
-  mag_max: 25.0
-  
-  # ===========================================================================
-  # SIZE RANGE (Half-Light Radius in pixels)
-  # ===========================================================================
-  r_half_min: 2.0
-  r_half_max: 30.0
-  
-  # ===========================================================================
-  # PROFILE-SPECIFIC PARAMETERS
-  # ===========================================================================
-  concentration_min: 10.0
-  concentration_max: 100.0
-  gamma_min: 2.2
-  gamma_max: 3.5
-  sersic_n_min: 1.0
-  sersic_n_max: 4.0
-  
-  # ===========================================================================
-  # DISCRETE STAR PARAMETERS (only used when method='discrete')
-  # ===========================================================================
-  
-  # --- Number of Stars ---
-  # Set n_stars_fixed to use a fixed number, otherwise randomize in range
-  n_stars_min: 50
-  n_stars_max: 500
-  # n_stars_fixed: 200  # Uncomment to use fixed number
-  
-  # --- Initial Mass Function ---
-  imf: "kroupa"  # 'kroupa', 'chabrier', 'salpeter'
-  
-  # --- Stellar Mass Range (solar masses) ---
-  mass_min: 0.1
-  mass_max: 100.0
-  
-  # --- Cluster Age (Gyr) ---
-  # Set age_gyr_fixed to use a fixed age, otherwise randomize in range
-  age_gyr_min: 0.1    # 100 Myr
-  age_gyr_max: 13.0   # 13 Gyr (age of universe)
-  # age_gyr_fixed: 5.0  # Uncomment for fixed age
-  
-  # --- Metallicity (Z, solar = 0.02) ---
-  # Set metallicity_fixed to use a fixed value, otherwise randomize in range
-  # Common values:
-  #   0.0001 - extremely metal-poor ([Fe/H] ~ -2.3)
-  #   0.001  - metal-poor ([Fe/H] ~ -1.3)
-  #   0.02   - solar ([Fe/H] = 0)
-  #   0.04   - metal-rich ([Fe/H] ~ +0.3)
-  metallicity_min: 0.001
-  metallicity_max: 0.04
-  # metallicity_fixed: 0.02  # Uncomment for fixed (solar) metallicity
-  
-  # --- Distance (parsecs) ---
-  # Set distance_pc_fixed to use a fixed distance, otherwise randomize
-  distance_pc_min: 5000    # 5 kpc
-  distance_pc_max: 50000   # 50 kpc
-  # distance_pc_fixed: 10000  # Uncomment for fixed distance
-  
-  # --- Binary Fraction ---
-  # Fraction of stars that are unresolved binaries (0-1)
-  binary_fraction: 0.3  # 30% binaries
-  
-  # --- Photometric Band ---
-  band: "i"  # 'u', 'g', 'r', 'i', 'z', 'y'
-
-# -----------------------------------------------------------------------------
-# MULTI-BAND INJECTION
-# -----------------------------------------------------------------------------
-# Set multiband: true to inject into multiple bands in one run.
-# Each band uses the same positions/sizes but independent magnitudes.
-multiband: false
-
-bands:
-  - name: "g"
-    mag_min: 19.5
-    mag_max: 26.0
-    collection: "2.2i/runs/DP0.2"   # Can override per band if needed
-  - name: "r"
-    mag_min: 19.0
-    mag_max: 25.5
-    collection: "2.2i/runs/DP0.2"
-  - name: "i"
-    mag_min: 18.5
-    mag_max: 25.0
-    collection: "2.2i/runs/DP0.2"
-
-# If multiband: false, only the single band below is used
-band: "i"
-
-# -----------------------------------------------------------------------------
-# INJECTION PARAMETERS
-# -----------------------------------------------------------------------------
-
-# Buffer from image edges (pixels)
-edge_buffer: 100
-
-# Add Poisson noise to injected sources
-add_noise: true
-
-# Use actual PSF from coadd (recommended)
-# If false, uses generic Moffat PSF with FWHM=0.7"
-use_actual_psf: true
-
-# Record Rubin coadd PSF-quality mask flags for each injected source.
-# This annotates outputs when an injection lands in regions such as
-# INEXACT_PSF, SENSOR_EDGE, CLIPPED, REJECTED, NO_DATA, or EDGE.
-record_psf_mask_flags: true
-
-# If true, skip injections that land in the PSF-quality mask planes above.
-# Default false keeps Rubin's local PSF model when it is computable, but makes
-# the affected injections visible in output catalogs.
-skip_bad_psf_regions: false
-
-# Pixel scale (arcsec/pixel) - Rubin default is 0.2
-pixel_scale: 0.2
-
-# Random seed for reproducibility
+cutout_size: 1500
 seed: 42
+edge_buffer: 50
+add_noise: true
+use_actual_psf: true
+psf_fwhm_fallback: 3.5
+record_psf_mask_flags: true
+skip_bad_psf_regions: false
+output_dir: outputs/rsp_i_band_example
 
-# -----------------------------------------------------------------------------
-# OUTPUT OPTIONS
-# -----------------------------------------------------------------------------
-save_injected_image: true
-save_catalog: true
-output_dir: "./injection_output"
+cluster_config:
+  profile_type: plummer
+  method: smooth
+  mag_min: 20.0
+  mag_max: 24.0
+  r_half_min: 3.0
+  r_half_max: 12.0
+  concentration_min: 5.0
+  concentration_max: 20.0
+  age_min_gyr: 1.0
+  age_max_gyr: 13.0
+
+# Multiband example:
+# bands: [g, r, i]

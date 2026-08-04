@@ -33,6 +33,25 @@ injection-pipeline \
 
 ## RSP / Butler Example
 
+On RSP, do this from a copy of the repository that lives in your RSP workspace. A typical setup is:
+
+```bash
+cd ~/repos
+git clone https://github.com/whosneha/INJECT.git
+cd INJECT
+pip install -e ".[dev,docs,jupyter]"
+```
+
+Open the RSP JupyterLab terminal through `File` -> `New` -> `Terminal`, run the commands above there, then open notebooks from the cloned `INJECT/` folder.
+
+If your latest work is only on your laptop, upload or copy the repo into RSP first, then run the install command from that copied folder.
+
+Once installed, notebook cells can import and call the package functions directly:
+
+```python
+from star_cluster_injection import InjectionConfig, InjectionPipeline
+```
+
 ```bash
 injection-pipeline \
   --repo /repo/main \

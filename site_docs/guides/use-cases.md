@@ -2,6 +2,11 @@
 
 This project is most useful when you know what scientific or technical question you are trying to answer. The pipeline supports several common modes of use.
 
+For most users, the two main examples to follow are:
+
+- `simple_rubin_mci_demo.ipynb` for the simple single-run workflow
+- `simple_batch_injection_demo.ipynb` for the repeated pooled workflow
+
 ## Detector Benchmarking
 
 Use INJECT when you want to ask, "What kinds of clusters does my detector recover reliably?"
@@ -43,8 +48,10 @@ Recommended setup:
 
 - Token-based access.
 - Smaller cutouts.
-- Analytic or metadata-driven PSF fallback.
+- GalSim-based or metadata-driven PSF fallback rather than Rubin-native PSF computation.
 - Notebook-first exploration before large runs.
+
+This is the main lightweight usage path reflected across the docs and examples.
 
 ## Batch Campaigns On Shared Compute
 
@@ -56,3 +63,5 @@ Recommended setup:
 - One output directory per campaign.
 - A detector callable that is versioned and documented.
 - Resource planning for PSF caching and output storage.
+
+This is the workflow represented most directly by `simple_batch_injection_demo.ipynb`.
