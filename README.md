@@ -108,12 +108,7 @@ After that, open notebooks from the cloned `INJECT/` folder in JupyterLab and us
 
 If you are working from an unpushed local copy, upload or copy the repository folder into your RSP workspace first, then open a terminal in that copied folder and run the same install command there.
 
-Suggested RSP-oriented notebooks:
 
-- [tutorial_injection.ipynb](https://github.com/whosneha/INJECT/blob/main/notebooks/tutorial_injection.ipynb): conceptual walkthrough and first orientation.
-- [injection_pipeline_rsp.ipynb](https://github.com/whosneha/INJECT/blob/main/notebooks/injection_pipeline_rsp.ipynb): RSP-specific execution pattern.
-- [full_pipeline_rubin_psf.ipynb](https://github.com/whosneha/INJECT/blob/main/notebooks/full_pipeline_rubin_psf.ipynb): best reference for Rubin-PSF-aware runs.
-- [multi_injection_pipeline_with_diagnostics_rsp.ipynb](https://github.com/whosneha/INJECT/blob/main/notebooks/multi_injection_pipeline_with_diagnostics_rsp.ipynb): repeated runs plus diagnostics on RSP.
 
 Typical RSP notebook setup flow:
 
