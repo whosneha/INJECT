@@ -207,6 +207,11 @@ def parse_args():
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--band", default="i")
     parser.add_argument("--no-noise", action="store_true")
+    parser.add_argument(
+        "--skip-bad-psf-regions",
+        action="store_true",
+        help="Skip injections landing in INEXACT_PSF/SENSOR_EDGE/CLIPPED/REJECTED/NO_DATA/EDGE regions.",
+    )
 
     # Data access
     parser.add_argument("--mode", default="auto", choices=["auto", "rsp", "tap", "mock"])
@@ -314,6 +319,7 @@ def main() -> int:
         seed=args.seed,
         add_noise=not args.no_noise,
         use_actual_psf=(data_access is not None and metadata.get("mode") == "rsp"),
+        skip_bad_psf_regions=args.skip_bad_psf_regions,
         psf_fwhm_fallback=psf_fwhm,
         output_dir=str(out_dir),
         cluster_config=cluster_cfg,
@@ -322,6 +328,8 @@ def main() -> int:
     detector_fn = build_detector(args.detector_spec, det_kwargs, psf_fwhm)
 
     psf_obj = metadata.get("psf") if isinstance(metadata, dict) else None
+    mask_array = metadata.get("mask") if isinstance(metadata, dict) else None
+    mask_plane_dict = metadata.get("mask_plane_dict") if isinstance(metadata, dict) else None
     bbox = metadata.get("bbox") if isinstance(metadata, dict) else None
     bbox_x = bbox.getMinX() if bbox is not None else 0
     bbox_y = bbox.getMinY() if bbox is not None else 0
@@ -334,6 +342,7 @@ def main() -> int:
         "detector_spec": args.detector_spec,
         "detector_kwargs": det_kwargs,
         "psf_fwhm_pixels": psf_fwhm,
+        "skip_bad_psf_regions": args.skip_bad_psf_regions,
         "output_dir": str(out_dir),
         "checkpoint_dir": str(checkpoint_path),
         "band": args.band,
@@ -352,6 +361,8 @@ def main() -> int:
         psf_obj=psf_obj,
         bbox_x_min=bbox_x,
         bbox_y_min=bbox_y,
+        mask_array=mask_array,
+        mask_plane_dict=mask_plane_dict,
         psf_fwhm_fallback=psf_fwhm,
         detector_fn=detector_fn,
         checkpoint_dir=str(checkpoint_path),

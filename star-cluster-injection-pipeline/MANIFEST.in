@@ -1,0 +1,15 @@
+include README.md
+include LICENSE
+include requirements.txt
+include docs_requirements.txt
+recursive-include docs *
+recursive-include site_docs *
+recursive-include configs *
+recursive-include tests *
+recursive-include notebooks *.ipynb
+recursive-exclude * __pycache__
+recursive-exclude * *.pyc
+recursive-exclude * .DS_Store
+exclude .readthedocs.yaml
+exclude .github
+exclude mkdocs.yml

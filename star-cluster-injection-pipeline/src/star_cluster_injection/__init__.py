@@ -1,8 +1,7 @@
-"""Internal package interface for the Star Cluster Injection Pipeline.
+"""Public package interface for the Star Cluster Injection Pipeline.
 
-The implementation modules live in this package. Imports are resolved lazily so
-lightweight metadata or configuration access does not require the full runtime
-scientific stack up front.
+This wrapper keeps the existing internal ``src`` package working while exposing
+the cleaner ``star_cluster_injection`` import path for users and packaging.
 """
 
 from importlib import import_module
@@ -37,6 +36,7 @@ __all__ = sorted([*_EXPORTS.keys(), "__author__", "__license__", "__version__"])
 
 
 def __getattr__(name):
+    """Resolve public exports lazily so metadata imports stay lightweight."""
     if name not in _EXPORTS:
         raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 

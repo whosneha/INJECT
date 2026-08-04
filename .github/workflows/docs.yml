@@ -1,4 +1,4 @@
-name: Deploy Docs
+name: Build and Deploy Docs
 
 on:
   push:
@@ -8,6 +8,7 @@ on:
       - "star-cluster-injection-pipeline/docs_requirements.txt"
       - "star-cluster-injection-pipeline/site_docs/**"
       - "star-cluster-injection-pipeline/src/**"
+      - ".readthedocs.yaml"
       - ".github/workflows/docs.yml"
   workflow_dispatch:
 
@@ -38,7 +39,47 @@ jobs:
       - name: Install docs dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r docs_requirements.txt
+          pip install -r docs_requirements.txt -e .
+
+      - name: Trigger Read the Docs build
+        env:
+          RTD_TOKEN: ${{ secrets.RTD_TOKEN }}
+          RTD_PROJECT: ${{ vars.RTD_PROJECT }}
+        run: |
+          if [ -n "$RTD_TOKEN" ] && [ -n "$RTD_PROJECT" ]; then
+            python - <<'PY'
+import json
+import os
+import sys
+import urllib.request
+
+project = os.environ.get("RTD_PROJECT", "").strip()
+token = os.environ.get("RTD_TOKEN", "").strip()
+
+if not project or not token:
+    print("RTD_TOKEN or RTD_PROJECT not configured; skipping Read the Docs trigger.")
+    sys.exit(0)
+
+req = urllib.request.Request(
+    f"https://readthedocs.org/api/v3/projects/{project}/builds/",
+    data=json.dumps({"version": "latest"}).encode("utf-8"),
+    headers={
+        "Authorization": f"Token {token}",
+        "Content-Type": "application/json",
+    },
+    method="POST",
+)
+
+try:
+    with urllib.request.urlopen(req) as resp:
+        print(resp.read().decode("utf-8"))
+except Exception as exc:
+    print(f"Read the Docs trigger failed: {exc}")
+    sys.exit(0)
+PY
+          else
+            echo "Read the Docs trigger skipped because RTD_TOKEN or RTD_PROJECT is not configured."
+          fi
 
       - name: Build docs
         run: mkdocs build

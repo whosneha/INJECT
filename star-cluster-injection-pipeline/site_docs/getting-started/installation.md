@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Python 3.10+
+- Python 3.9+
 - `pip`
 - `git`
 - Optional for notebook workflows: JupyterLab or Jupyter Notebook
@@ -30,53 +30,64 @@ cd INJECT/star-cluster-injection-pipeline
     .venv\Scripts\Activate.ps1
     ```
 
-## 3. Install Runtime Dependencies
+## 3. Install The Package
+
+For a standard user install:
 
 ```bash
-pip install -U pip
-pip install -r requirements.txt
+python -m pip install --upgrade pip
+pip install .
 ```
 
-## 4. Make Local Package Imports Work
-
-This project currently uses a source layout without a packaged installer. Add the project root to your Python path:
-
-=== "Temporary (current shell)"
-
-    ```bash
-    export PYTHONPATH="$PWD"
-    ```
-
-=== "Persistent (zsh)"
-
-    ```bash
-    echo 'export PYTHONPATH="$PYTHONPATH:$HOME/path/to/INJECT/star-cluster-injection-pipeline"' >> ~/.zshrc
-    source ~/.zshrc
-    ```
-
-## 5. Verify The Installation
+For development, testing, and docs work:
 
 ```bash
-python -c "import src; print('Import OK')"
-pytest -q
+pip install -e ".[dev,docs]"
 ```
 
-## Optional: Install Documentation Tooling
+For notebook-heavy work:
 
 ```bash
-pip install -r docs_requirements.txt
+pip install -e ".[dev,docs,jupyter]"
+```
+
+## 4. Verify The Installation
+
+```bash
+python -c "import star_cluster_injection as sci; print(sci.__version__)"
+injection-pipeline --version
+```
+
+## 5. Optional Tooling Layers
+
+Documentation:
+
+```bash
 mkdocs serve
 ```
 
-Then open the local docs URL shown in terminal (usually `http://127.0.0.1:8000`).
+Testing:
+
+```bash
+pytest
+```
+
+Packaging checks:
+
+```bash
+python -m build
+```
 
 ## Common Setup Issues
 
-!!! warning "ModuleNotFoundError: No module named 'src'"
-    Ensure you are in `star-cluster-injection-pipeline` and have `PYTHONPATH` set to that directory.
+!!! warning "Package installs but scientific imports fail"
+    Confirm the active environment has the runtime dependencies from `requirements.txt` or install via `pip install -e ".[dev]"`.
 
 !!! warning "Notebook kernel cannot import project modules"
     Select the same Python environment used for installation, then restart the notebook kernel.
 
 !!! warning "Rubin Butler imports fail locally"
     That is expected outside an RSP environment. Use TAP-mode workflows or mock data examples when running remotely.
+
+!!! warning "`pip install` refuses to write into the system interpreter"
+    Create and activate a virtual environment first. This is the expected workflow on modern Python distributions.

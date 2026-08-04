@@ -163,6 +163,16 @@ add_noise: true
 # If false, uses generic Moffat PSF with FWHM=0.7"
 use_actual_psf: true
 
+# Record Rubin coadd PSF-quality mask flags for each injected source.
+# This annotates outputs when an injection lands in regions such as
+# INEXACT_PSF, SENSOR_EDGE, CLIPPED, REJECTED, NO_DATA, or EDGE.
+record_psf_mask_flags: true
+
+# If true, skip injections that land in the PSF-quality mask planes above.
+# Default false keeps Rubin's local PSF model when it is computable, but makes
+# the affected injections visible in output catalogs.
+skip_bad_psf_regions: false
+
 # Pixel scale (arcsec/pixel) - Rubin default is 0.2
 pixel_scale: 0.2
 

@@ -1,3 +1,24 @@
+"""Light profile models for synthetic star clusters.
+
+This module implements various analytic light profile models (King, Plummer,
+EFF, Sersic) and associated utilities for converting between magnitude and flux.
+
+Functions:
+    mag_to_flux: Convert AB magnitude to counts using a zero point.
+    flux_to_mag: Convert counts to AB magnitude.
+
+Classes:
+    KingProfile: King profile (suitable for globular clusters).
+    PlummerProfile: Plummer profile (smooth, power-law falloff).
+    EFFProfile: EFF profile (exponential-free-fall model).
+    SersicProfile: Sersic profile with variable index (generalizable model).
+
+Each profile class provides:
+    - intensity(): Compute surface brightness at given (r, theta) coordinates.
+    - total_flux(): Compute total integrated flux.
+    - params_from_config(): Factory method to instantiate from ClusterConfig.
+"""
+
 import numpy as np
 
 
@@ -27,15 +48,26 @@ class BaseProfile:
     `generate_2d` is provided here and works for all subclasses.
     """
 
-    def __init__(self, r_half, age, magnitude, zero_point=27.0):
-        self.r_half     = float(r_half)
-        self.age        = float(age)
-        self.magnitude  = float(magnitude)
+    def __init__(self, r_half, age, magnitude, zero_point=27.0, central_brightness=None):
+        self.r_half = float(r_half)
+        self.age = float(age)
+        self.magnitude = float(magnitude)
         self.zero_point = float(zero_point)
+        self.central_brightness = central_brightness
         self.total_flux = mag_to_flux(magnitude, zero_point)
+        if central_brightness is not None:
+            self.total_flux = float(central_brightness)
 
     def surface_brightness(self, r):
         raise NotImplementedError
+
+    def compute_brightness(self, r):
+        """Compatibility wrapper for the older public API."""
+        return self.surface_brightness(r)
+
+    def half_light_radius(self):
+        """Return the profile half-light radius; for compatibility, use r_half."""
+        return self.r_half
 
     def generate_2d(self, shape):
         """
@@ -71,8 +103,9 @@ class PlummerProfile(BaseProfile):
     r_half = a * sqrt(2^(1/2) - 1)  =>  a = r_half / sqrt(2^(1/2) - 1)
     """
 
-    def __init__(self, r_half, age=1.0, magnitude=22.0, zero_point=27.0):
-        super().__init__(r_half, age, magnitude, zero_point)
+    def __init__(self, r_half, age=1.0, magnitude=22.0, zero_point=27.0,
+                 central_brightness=None):
+        super().__init__(r_half, age, magnitude, zero_point, central_brightness=central_brightness)
         self.a = r_half / np.sqrt(np.sqrt(2.0) - 1.0)
 
     def surface_brightness(self, r):
@@ -88,10 +121,11 @@ class KingProfile(BaseProfile):
     """
 
     def __init__(self, r_half, concentration=10.0, age=1.0,
-                 magnitude=22.0, zero_point=27.0):
-        super().__init__(r_half, age, magnitude, zero_point)
+                 magnitude=22.0, zero_point=27.0, central_brightness=None):
+        super().__init__(r_half, age, magnitude, zero_point, central_brightness=central_brightness)
         self.concentration = float(concentration)
-        self.rc, self.rt   = self._solve_radii()
+        self.rc, self.rt = self._solve_radii()
+        self.r_t = self.rt
 
     def _solve_radii(self):
         c  = self.concentration
@@ -133,10 +167,10 @@ class EFFProfile(BaseProfile):
     """
 
     def __init__(self, r_half, gamma=2.5, age=1.0,
-                 magnitude=22.0, zero_point=27.0):
-        super().__init__(r_half, age, magnitude, zero_point)
+                 magnitude=22.0, zero_point=27.0, central_brightness=None):
+        super().__init__(r_half, age, magnitude, zero_point, central_brightness=central_brightness)
         self.gamma = max(float(gamma), 2.01)
-        self.a     = self._solve_a()
+        self.a = self._solve_a()
 
     def _solve_a(self):
         # r_half: I(r_half) cumulative = 0.5 * total
@@ -168,10 +202,10 @@ class SersicProfile(BaseProfile):
     """
 
     def __init__(self, r_half, sersic_n=1.0, age=1.0,
-                 magnitude=22.0, zero_point=27.0):
-        super().__init__(r_half, age, magnitude, zero_point)
+                 magnitude=22.0, zero_point=27.0, central_brightness=None):
+        super().__init__(r_half, age, magnitude, zero_point, central_brightness=central_brightness)
         self.sersic_n = max(float(sersic_n), 0.3)
-        self.bn       = self._compute_bn()
+        self.bn = self._compute_bn()
 
     def _compute_bn(self):
         n = self.sersic_n

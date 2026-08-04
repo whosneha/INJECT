@@ -47,3 +47,13 @@ For each experiment, export:
 2. Verify detector threshold consistency across runs.
 3. Test sensitivity to matching radius.
 4. Document all cuts before comparison.
+5. If using Rubin coadds, decide whether injections in `INEXACT_PSF`, `SENSOR_EDGE`, `CLIPPED`, `REJECTED`, `NO_DATA`, or `EDGE` regions should be kept, flagged, or excluded.
+
+## Rubin PSF-Quality Flags
+
+When running on RSP/Butler coadds, the pipeline can annotate each injected source with Rubin mask-plane flags that indicate potentially unreliable PSF regions.
+
+- Default behavior: keep the injection and record the flags in `injection_info`.
+- Strict behavior: set `skip_bad_psf_regions=True` to exclude those locations before injection.
+
+This keeps throughput studies aligned with Rubin's local PSF model while still exposing where the PSF was marked inexact or edge-affected.

@@ -1,5 +1,30 @@
+"""Configuration and parameter management for the injection pipeline.
+
+This module defines the core configuration dataclasses that control all aspects
+of the injection pipeline, including cluster properties, injection parameters,
+and PSF handling options.
+
+Classes:
+    ClusterConfig: Parameters defining the space of synthetic star clusters.
+    InjectionConfig: Top-level configuration for the full injection pipeline.
+
+Constants:
+    DEFAULT_PSF_BAD_MASK_PLANES: Tuple of Rubin mask plane names that indicate
+        invalid or poorly-constrained PSF regions (INEXACT_PSF, SENSOR_EDGE, etc.).
+"""
+
 from dataclasses import dataclass, field
 from typing import Optional
+
+
+DEFAULT_PSF_BAD_MASK_PLANES = (
+    'INEXACT_PSF',
+    'SENSOR_EDGE',
+    'CLIPPED',
+    'REJECTED',
+    'NO_DATA',
+    'EDGE',
+)
 
 
 @dataclass
@@ -36,6 +61,9 @@ class InjectionConfig:
     add_noise           : bool         = True
     use_actual_psf      : bool         = True    # False -> Gaussian fallback always
     psf_fwhm_fallback   : float        = 3.5
+    record_psf_mask_flags: bool        = True
+    skip_bad_psf_regions : bool        = False
+    psf_bad_mask_planes  : tuple[str, ...] = DEFAULT_PSF_BAD_MASK_PLANES
     save_injected_image : bool         = False
     output_dir          : str          = 'outputs'
     cluster_config      : ClusterConfig = field(default_factory=ClusterConfig)
@@ -62,6 +90,8 @@ class InjectionConfig:
             f'  add_noise   = {self.add_noise}\n'
             f'  use_actual_psf = {self.use_actual_psf}\n'
             f'  psf_fallback = {self.psf_fwhm_fallback} px\n'
+            f'  record_psf_mask_flags = {self.record_psf_mask_flags}\n'
+            f'  skip_bad_psf_regions = {self.skip_bad_psf_regions}\n'
             f'  tract/patch/band = {self.tract}/{self.patch}/{self.band}\n'
             f'  profile     = {cc.profile_type}  method={cc.method}\n'
             f'  mag         = [{cc.mag_min}, {cc.mag_max}]\n'

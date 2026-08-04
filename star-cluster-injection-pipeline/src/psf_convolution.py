@@ -8,6 +8,12 @@ pixel position using exposure.getPsf().computeImage(Point2D(x, y)).
 import numpy as np
 from scipy.signal import fftconvolve
 
+try:
+    import galsim  # noqa: F401
+    HAS_GALSIM = True
+except ImportError:  # pragma: no cover - optional dependency
+    HAS_GALSIM = False
+
 
 def make_gaussian_psf(fwhm_px, size=None):
     """
@@ -133,7 +139,19 @@ def get_psf_size_from_coadd(exposure, position):
     }
 
 
-def convolve_with_psf(cluster_stamp, psf_kernel, mode='same'):
+def create_rubin_psf(fwhm_px, size=(51, 51)):
+    """Create a simple Rubin-like normalized PSF kernel for testing and fallback use."""
+    if isinstance(size, int):
+        size = (size, size)
+    size_y, size_x = size
+    if size_y % 2 == 0:
+        size_y += 1
+    if size_x % 2 == 0:
+        size_x += 1
+    return make_gaussian_psf(fwhm_px, size=max(size_y, size_x))
+
+
+def convolve_with_psf(cluster_stamp, psf_kernel=None, mode='same', fwhm=None):
     """
     Convolve a 2D cluster stamp with a PSF kernel using FFT convolution.
 
@@ -141,20 +159,26 @@ def convolve_with_psf(cluster_stamp, psf_kernel, mode='same'):
     ----------
     cluster_stamp : np.ndarray
         2D array of the synthetic cluster (before PSF smearing).
-    psf_kernel : np.ndarray
-        2D PSF kernel (should be normalized to sum=1).
+    psf_kernel : np.ndarray or None
+        2D PSF kernel (should be normalized to sum=1). If None and fwhm is given,
+        a Gaussian kernel is built automatically.
     mode : str
         'same' to return array of same shape as cluster_stamp.
+    fwhm : float or None
+        FWHM in pixels for an automatic Gaussian PSF if psf_kernel is None.
 
     Returns
     -------
     convolved : np.ndarray
     """
-    # Ensure both are float64 for precision
     stamp = np.asarray(cluster_stamp, dtype=np.float64)
-    kernel = np.asarray(psf_kernel, dtype=np.float64)
 
-    # Re-normalize kernel just in case
+    if psf_kernel is None:
+        if fwhm is None:
+            return stamp.copy()
+        psf_kernel = create_rubin_psf(fwhm, size=max(stamp.shape))
+
+    kernel = np.asarray(psf_kernel, dtype=np.float64)
     ksum = kernel.sum()
     if ksum > 0:
         kernel = kernel / ksum

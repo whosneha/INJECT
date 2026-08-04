@@ -1,11 +1,11 @@
 # Pipeline Workflows
 
-## Workflow A: Script-First Injections
+## Workflow A: Packaged CLI Run
 
-Use `scripts/run_injection.py` when you want a quick, repeatable run from terminal.
+Use `injection-pipeline` when you want a quick, repeatable run from terminal.
 
 ```bash
-python scripts/run_injection.py --n-clusters 100 --band i --method smooth
+injection-pipeline --n-clusters 100 --band i --method smooth
 ```
 
 Best for:
@@ -49,6 +49,8 @@ That is useful when:
 
 - RSP/Butler workflows can use Rubin CoaddPsf objects (spatially varying PSF).
 - TAP workflows outside RSP use cutouts plus PSF FWHM metadata and then analytic PSF fallback during injection.
+- In the RSP path, the pipeline records Rubin PSF-quality mask flags at each injection position when mask data are available.
+- By default, the pipeline still uses the local Rubin PSF model if it is computable, even in `INEXACT_PSF`-type regions. Enable `skip_bad_psf_regions=True` when you want those positions excluded from injection.
 
 For PSF-sensitive science conclusions, use TAP for large-scale throughput tests, then validate key results with the RSP/Butler PSF path.
 

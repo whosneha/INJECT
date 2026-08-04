@@ -1,6 +1,6 @@
 # CLI and Scripts Reference
 
-## Main Script: `scripts/run_injection.py`
+## Packaged CLI: `injection-pipeline`
 
 ### Core Arguments
 
@@ -26,23 +26,17 @@
 ### Examples
 
 ```bash
-python scripts/run_injection.py --n-clusters 50 --band i --method smooth
+injection-pipeline --n-clusters 50 --band i --method smooth
 ```
 
 ```bash
-python scripts/run_injection.py --token YOUR_TOKEN --ra 55.0 --dec -30.0 --band i
+injection-pipeline --token YOUR_TOKEN --ra 55.0 --dec -30.0 --band i
 ```
 
-## Legacy CLI Module: `src/cli.py`
+## Script Entry Point: `scripts/run_injection.py`
 
-The repository includes an argparse CLI module with subcommands:
-
-- `inject`
-- `detect`
-- `completeness`
-
-Use this when integrating specific sub-steps into automation scripts.
+The repository still includes `scripts/run_injection.py` for script-first workflows and notebooks that shell out to a file path rather than the packaged console entry point.
 
 ## Output Locations
 
-By default, script outputs are written under `plots/`, including image diagnostics and JSON catalogs.
+By default, packaged CLI outputs are written under `outputs/`, including image diagnostics and JSON catalogs.

@@ -1,3 +1,5 @@
 # INJECT
-Star Cluster Injection Pipeline for Rubin/LSST Data
-Problems with nested page // need to fix once the documentation for the site is done. 
+
+Star Cluster Injection Pipeline for Rubin/LSST Data.
+
+For the main project documentation, installation steps, and an RSP walkthrough, see [star-cluster-injection-pipeline/README.md](star-cluster-injection-pipeline/README.md).

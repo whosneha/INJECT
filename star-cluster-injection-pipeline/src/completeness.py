@@ -1,3 +1,20 @@
+"""Completeness curve computation and analysis.
+
+This module implements routines for computing injection-based completeness
+curves that quantify the fraction of injected clusters successfully detected
+as a function of brightness, size, and other observational properties.
+
+Functions:
+    compute_completeness_curve: Compute completeness as a function of brightness.
+    plot_completeness: Visualize completeness curves with error bars.
+
+Key Features:
+    - Binning and statistical uncertainty estimation.
+    - Handling of edge cases (zero detections, perfect detection).
+    - Plotting and export utilities.
+    - Accounting for PSF quality flags in completeness weighting.
+"""
+
 def compute_completeness_curve(injected_catalog, detected_catalog, brightness_bins):
     """
     Computes the completeness curve based on the injected and detected catalogs.

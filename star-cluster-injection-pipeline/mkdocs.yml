@@ -1,6 +1,6 @@
 site_name: Star Cluster Injection Pipeline Docs
 site_description: End-to-end documentation for installation, workflows, and scientific usage.
-site_url: https://whosneha.github.io/INJECT/
+site_url: !ENV [READTHEDOCS_CANONICAL_URL, "https://whosneha.github.io/INJECT/"]
 docs_dir: site_docs
 
 repo_name: INJECT
@@ -67,12 +67,15 @@ nav:
       - Installation: getting-started/installation.md
       - Quickstart: getting-started/quickstart.md
   - Guides:
+      - Use Cases: guides/use-cases.md
       - Configuration: guides/configuration.md
+      - Customization: guides/customization.md
       - Pipeline Workflows: guides/pipeline-workflows.md
       - Notebooks: guides/notebooks.md
       - Plot Gallery: guides/plot-gallery.md
       - PSF Caching and Performance: guides/psf-caching.md
       - Detection and Completeness: guides/detection-and-completeness.md
+      - Deployment: guides/deployment.md
   - Reference:
       - CLI and Scripts: reference/cli-and-scripts.md
       - Python Modules: reference/python-modules.md

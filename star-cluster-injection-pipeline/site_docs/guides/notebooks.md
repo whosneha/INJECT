@@ -48,7 +48,7 @@ injected_image, info = inject_from_catalog(
 		<pre><code class="language-python">bands = ["g", "r", "i"]
 
 for band in bands:
-    !python scripts/run_injection.py \
+    !injection-pipeline \
       --token $RUBIN_TOKEN \
       --ra 55.0 --dec -30.0 \
       --band {band} \
@@ -122,8 +122,6 @@ These are useful for development history, but are usually not the best first sto
 
 - [injecter_tester.ipynb](https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/injecter_tester.ipynb)
 - [test_injection_rsp.ipynb](https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/test_injection_rsp.ipynb)
-- [tester111.ipynb](https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/tester111.ipynb)
-- [Untitled-1.ipynb](https://github.com/whosneha/INJECT/blob/main/star-cluster-injection-pipeline/notebooks/Untitled-1.ipynb)
 
 ## Notebook Setup Tips
 

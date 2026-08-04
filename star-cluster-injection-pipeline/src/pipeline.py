@@ -1,3 +1,29 @@
+"""High-level pipeline orchestration and batch processing.
+
+This module provides the main InjectionPipeline class that coordinates all steps
+of the injection workflow: catalog generation, PSF caching, injection execution,
+detection, and completeness analysis.
+
+Classes:
+    InjectionPipeline: Orchestrator for the full injection workflow.
+
+Key Responsibilities:
+    - Load science images and PSF data from Rubin Butler (RSP mode).
+    - Generate injection catalogs with realistic positions and properties.
+    - Execute injections into images (single or batch mode).
+    - Extract detection completeness curves.
+    - Export results and metadata to JSON/HDF5 formats.
+    - Support CANFAR/HTCondor batch processing with worker parallelism.
+
+Attributes of InjectionPipeline:
+    config: InjectionConfig instance controlling all behavior.
+    images: Loaded science images (dict of band → ndarray).
+    masks: PSF quality mask arrays (dict of band → ndarray, RSP only).
+    mask_plane_dicts: Mapping of mask plane names to bit indices (RSP only).
+    psfs: Cached PSF objects or FWHM values (dict of band → object/float).
+    psf_cache: Optional PSFCache instance for efficient PSF extraction.
+"""
+
 import os
 import logging
 import numpy as np
@@ -71,12 +97,16 @@ class InjectionPipeline:
             self.image     = image
             self.images    = {self.config.band: image}
             self.psf_objs  = {}
+            self.masks     = {}
+            self.mask_plane_dicts = {}
             return
 
         if butler is not None and data_id is not None:
             self.images   = {}
             self.psf_objs = {}
             self.bboxes   = {}
+            self.masks    = {}
+            self.mask_plane_dicts = {}
 
             for band in self.config.active_bands:
                 bid   = {**data_id, 'band': band}
@@ -85,6 +115,8 @@ class InjectionPipeline:
                 CUTOUT = self.config.cutout_size   # add this to InjectionConfig
                 self.images[band]   = coadd.image.array[:CUTOUT, :CUTOUT].copy()
                 self.psf_objs[band] = coadd.getPsf()
+                self.masks[band]    = coadd.mask.array[:CUTOUT, :CUTOUT].copy()
+                self.mask_plane_dicts[band] = dict(coadd.mask.getMaskPlaneDict())
                 bbox                = coadd.getBBox()
                 self.bboxes[band]   = (bbox.getMinX(), bbox.getMinY())
 
@@ -201,6 +233,8 @@ class InjectionPipeline:
     # ------------------------------------------------------------------
     def run_batch(self, n_iterations, n_per_iter,
                   psf_obj, bbox_x_min, bbox_y_min,
+                  mask_array        = None,
+                  mask_plane_dict   = None,
                   psf_fwhm_fallback = 3.5,
                   detector_fn       = None,
                   store_images      = False,
@@ -293,11 +327,16 @@ class InjectionPipeline:
                 'psf_obj'          : psf_obj,
                 'bbox_x_min'       : bbox_x_min,
                 'bbox_y_min'       : bbox_y_min,
+                'mask_array'       : mask_array,
+                'mask_plane_dict'  : mask_plane_dict,
                 'psf_fwhm_fallback': psf_fwhm_fallback,
                 'pixel_scale'      : self.config.pixel_scale,
                 'zero_point'       : self.config.zero_point,
                 'add_noise'        : self.config.add_noise,
                 'use_actual_psf'   : self.config.use_actual_psf,
+                'record_psf_mask_flags': self.config.record_psf_mask_flags,
+                'skip_bad_psf_regions' : self.config.skip_bad_psf_regions,
+                'psf_bad_mask_planes'  : self.config.psf_bad_mask_planes,
                 'detector_fn'      : detector_fn,
                 'store_images'     : store_images,
                 'checkpoint_dir'   : checkpoint_dir,
@@ -326,11 +365,16 @@ class InjectionPipeline:
                 psf_obj           = args['psf_obj'],
                 bbox_x_min        = args['bbox_x_min'],
                 bbox_y_min        = args['bbox_y_min'],
+                mask_array        = args['mask_array'],
+                mask_plane_dict   = args['mask_plane_dict'],
                 psf_fwhm_fallback = args['psf_fwhm_fallback'],
                 pixel_scale       = args['pixel_scale'],
                 zero_point        = args['zero_point'],
                 add_noise         = args['add_noise'],
                 use_actual_psf    = args['use_actual_psf'],
+                record_psf_mask_flags = args['record_psf_mask_flags'],
+                skip_bad_psf_regions  = args['skip_bad_psf_regions'],
+                psf_bad_mask_planes   = args['psf_bad_mask_planes'],
                 rng_seed          = it,
                 verbose           = args['verbose'],
                 use_psf_cache     = args['use_psf_cache'],
@@ -454,6 +498,7 @@ class InjectionPipeline:
     # ------------------------------------------------------------------
     def _resolve_psf_context(self, band=None, psf_obj=None,
                              bbox_x_min=None, bbox_y_min=None,
+                             mask_array=None, mask_plane_dict=None,
                              psf_fwhm_fallback=3.5):
         """Resolve PSF and bbox context from loaded Rubin data when available."""
         active_band = band or self.config.active_bands[0]
@@ -468,17 +513,26 @@ class InjectionPipeline:
             if bbox_y_min is None:
                 bbox_y_min = by
 
+        if mask_array is None and hasattr(self, 'masks'):
+            mask_array = self.masks.get(active_band)
+
+        if mask_plane_dict is None and hasattr(self, 'mask_plane_dicts'):
+            mask_plane_dict = self.mask_plane_dicts.get(active_band)
+
         return {
             'band': active_band,
             'psf_obj': psf_obj,
             'bbox_x_min': 0 if bbox_x_min is None else bbox_x_min,
             'bbox_y_min': 0 if bbox_y_min is None else bbox_y_min,
+            'mask_array': mask_array,
+            'mask_plane_dict': mask_plane_dict,
             'psf_fwhm_fallback': psf_fwhm_fallback,
         }
 
     # ------------------------------------------------------------------
     def inject(self, catalog=None, band=None, psf_obj=None,
                bbox_x_min=None, bbox_y_min=None,
+               mask_array=None, mask_plane_dict=None,
                psf_fwhm_fallback=3.5, rng_seed=None,
                drop_stamps=True, verbose=True):
         """
@@ -510,6 +564,8 @@ class InjectionPipeline:
             psf_obj=psf_obj,
             bbox_x_min=bbox_x_min,
             bbox_y_min=bbox_y_min,
+            mask_array=mask_array,
+            mask_plane_dict=mask_plane_dict,
             psf_fwhm_fallback=psf_fwhm_fallback,
         )
 
@@ -522,11 +578,16 @@ class InjectionPipeline:
             psf_obj=context['psf_obj'],
             bbox_x_min=context['bbox_x_min'],
             bbox_y_min=context['bbox_y_min'],
+            mask_array=context['mask_array'],
+            mask_plane_dict=context['mask_plane_dict'],
             psf_fwhm_fallback=context['psf_fwhm_fallback'],
             pixel_scale=self.config.pixel_scale,
             zero_point=self.config.zero_point,
             add_noise=self.config.add_noise,
             use_actual_psf=self.config.use_actual_psf,
+            record_psf_mask_flags=self.config.record_psf_mask_flags,
+            skip_bad_psf_regions=self.config.skip_bad_psf_regions,
+            psf_bad_mask_planes=self.config.psf_bad_mask_planes,
             rng_seed=self.config.seed if rng_seed is None else rng_seed,
             verbose=verbose,
         )

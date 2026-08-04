@@ -1,10 +1,37 @@
-"""
-Data access module for Rubin data.
-Supports both RSP Butler access and remote TAP service access.
+"""Data access interfaces for Rubin Butler and remote TAP services.
+
+This module abstracts the complexity of accessing Rubin Observatory data
+from two different environments: RSP (on-site, full Butler access) and
+remote (TAP/SODA cutout service).
+
+Classes:
+    RubinDataAccess: Main interface for loading coadds and PSFs.
+
+Key Features:
+    - Unified interface for both RSP (full) and TAP (remote) modes.
+    - PSF object extraction and caching for efficiency.
+    - Rubin mask array extraction and plane dictionary generation.
+    - Automatic fallback from actual PSF to Gaussian when unavailable.
+    - Token-based authentication for TAP access.
 
 PSF Handling:
-- RSP mode: Uses actual PSF from coadd exposure (spatially varying)
-- TAP mode: Estimates PSF FWHM from catalog (approximate, not actual PSF image)
+    - RSP mode: Uses actual PSF from coadd exposure (spatially varying CoaddPsf).
+    - TAP mode: Estimates PSF FWHM from catalog (approximate, not actual PSF image).
+    - Both modes: Extract mask arrays for flagging regions with poor PSF quality.
+
+Usage:
+    For RSP (local on CANFAR):
+        >>> from .data_access import load_coadd_image
+        >>> metadata = load_coadd_image(tract, patch, 'i')
+        >>> image = metadata['image']
+        >>> psf = metadata['psf']
+        >>> mask = metadata['mask']
+
+    For TAP (remote):
+        >>> from .rubin_query import RubinDataQuery
+        >>> query = RubinDataQuery(ra, dec, size_deg=0.1, token='...', band='i')
+        >>> image = query.get_cutout_image()
+        >>> psf_fwhm = query.get_psf_fwhm()
 """
 
 import numpy as np
@@ -135,6 +162,8 @@ class RubinDataAccess:
             'exposure': exposure,
             'wcs': exposure.getWcs(),
             'psf': exposure.getPsf(),
+            'mask': exposure.mask.array.copy(),
+            'mask_plane_dict': dict(exposure.mask.getMaskPlaneDict()),
             'variance': exposure.variance.array.copy(),
             'bbox': exposure.getBBox(),
             'mode': 'rsp'

@@ -1,3 +1,25 @@
+"""Command-line interface for the injection pipeline.
+
+This module provides a user-friendly command-line interface for running the
+entire star cluster injection workflow, from catalog generation through
+completeness analysis.
+
+Commands:
+    inject: Run the full injection pipeline with specified configuration.
+    catalog: Generate an injection catalog without running injections.
+    detect: Run detection on pre-injected images.
+    completeness: Compute completeness curves from injection results.
+    config: Show or validate pipeline configuration.
+
+Usage:
+    injection-pipeline --n-clusters 50 --band i
+    injection-pipeline --token YOUR_TOKEN --ra 55.0 --dec -30.0
+
+Configuration:
+    The CLI can read YAML configuration files or accept parameters via command-line flags.
+    For details on configuration options, see --help for each subcommand.
+"""
+
 import argparse
 from src.inject import inject_cluster
 from src.detection_test import run_detection_pipeline

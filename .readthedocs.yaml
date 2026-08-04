@@ -1,0 +1,16 @@
+version: 2
+
+build:
+  os: ubuntu-24.04
+  tools:
+    python: "3.11"
+
+mkdocs:
+  configuration: star-cluster-injection-pipeline/mkdocs.yml
+
+python:
+  install:
+    - requirements: star-cluster-injection-pipeline/docs_requirements.txt
+    - requirements: star-cluster-injection-pipeline/requirements.txt
+    - method: pip
+      path: star-cluster-injection-pipeline
