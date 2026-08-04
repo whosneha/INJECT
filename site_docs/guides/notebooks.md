@@ -2,6 +2,12 @@
 
 The project includes notebooks for onboarding, full-pipeline runs, PSF-specific workflows, and diagnostic analysis. This page groups them by use case so users can find the right starting point quickly.
 
+For high-fidelity science use, treat the RSP notebooks as the primary entry point.
+
+- RSP notebooks are the preferred path when you want Rubin-native PSF handling.
+- TAP and local runs are still useful for demos, lightweight tests, and exploratory work.
+- Outside RSP, PSF handling falls back to the GalSim-based path instead of Rubin-native PSF computation.
+
 ## Notebook Code Previews
 
 These are representative code cells shown directly in the docs page.
@@ -64,6 +70,13 @@ for band in bands:
 3. [simple_multiband_injection_demo.ipynb](https://github.com/whosneha/INJECT/blob/main/notebooks/simple_multiband_injection_demo.ipynb): multiband extension.
 4. [simple_batch_injection_demo.ipynb](https://github.com/whosneha/INJECT/blob/main/notebooks/simple_batch_injection_demo.ipynb): 10 x 1000 pooled workflow.
 5. [full_pipeline_rubin_psf.ipynb](https://github.com/whosneha/INJECT/blob/main/notebooks/full_pipeline_rubin_psf.ipynb): realistic PSF workflow.
+
+## Best RSP Starting Points
+
+- [tutorial_injection.ipynb](https://github.com/whosneha/INJECT/blob/main/notebooks/tutorial_injection.ipynb)
+- [injection_pipeline_rsp.ipynb](https://github.com/whosneha/INJECT/blob/main/notebooks/injection_pipeline_rsp.ipynb)
+- [full_pipeline_rubin_psf.ipynb](https://github.com/whosneha/INJECT/blob/main/notebooks/full_pipeline_rubin_psf.ipynb)
+- [multi_injection_pipeline_with_diagnostics_rsp.ipynb](https://github.com/whosneha/INJECT/blob/main/notebooks/multi_injection_pipeline_with_diagnostics_rsp.ipynb)
 
 ## Notebook Catalog
 
