@@ -53,13 +53,13 @@ If your latest work is only on your laptop, upload or copy the repo into RSP fir
 Once installed, notebook cells can import and call the package functions directly:
 
 ```python
-from src import InjectionConfig, InjectionPipeline
+from inject import InjectionConfig, InjectionPipeline
 ```
 
 For notebook output folders, prefer:
 
 ```python
-from src import notebook_output_dir
+from inject import notebook_output_dir
 
 RUN_OUTPUT_DIR = notebook_output_dir("quickstart_demo")
 ```
@@ -84,7 +84,7 @@ injection-pipeline \
 
 ```python
 import numpy as np
-from src import InjectionConfig, InjectionPipeline
+from inject import InjectionConfig, InjectionPipeline
 
 image = np.random.normal(100, 15, (500, 500))
 cfg = InjectionConfig()

@@ -3,21 +3,21 @@
 from pathlib import Path
 import tomllib
 
-import src
+import inject
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_public_package_exposes_version_and_lazy_config_import():
-    assert src.__version__ == "0.1.0"
-    assert src.InjectionConfig.__name__ == "InjectionConfig"
+    assert inject.__version__ == "0.1.0"
+    assert inject.InjectionConfig.__name__ == "InjectionConfig"
 
 
 def test_pyproject_points_console_script_at_public_package():
     pyproject = tomllib.loads((PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
 
-    assert pyproject["project"]["scripts"]["injection-pipeline"] == "src.cli:main"
+    assert pyproject["project"]["scripts"]["injection-pipeline"] == "inject.cli:main"
 
 
 def test_pyproject_does_not_cap_numpy_below_v2():
@@ -29,4 +29,4 @@ def test_pyproject_does_not_cap_numpy_below_v2():
 
 
 def test_public_package_directory_exists():
-    assert (PROJECT_ROOT / "src" / "__init__.py").exists()
+    assert (PROJECT_ROOT / "inject" / "__init__.py").exists()

@@ -21,9 +21,9 @@ import json
 # Add parent to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.inject import inject_clusters_rubin_psf, PSFCache
-from src.light_profiles import PlummerProfile
-from src.config import InjectionConfig
+from inject.inject import inject_clusters_rubin_psf, PSFCache
+from inject.light_profiles import PlummerProfile
+from inject.config import InjectionConfig
 
 
 def create_synthetic_psf():

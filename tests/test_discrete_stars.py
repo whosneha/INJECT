@@ -12,17 +12,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 
-from src.cluster_models import (
+from inject.cluster_models import (
     DiscreteStarCluster, create_cluster,
     kroupa_imf, chabrier_imf, salpeter_imf,
     plummer_positions, king_positions
 )
-from src.light_profiles import PlummerProfile
-from src.inject import create_injection_catalog, inject_from_catalog
+from inject.light_profiles import PlummerProfile
+from inject.inject import create_injection_catalog, inject_from_catalog
 
 # Check for GalSim
 try:
-    from src.psf_convolution import convolve_with_psf, HAS_GALSIM
+    from inject.psf_convolution import convolve_with_psf, HAS_GALSIM
 except ImportError:
     HAS_GALSIM = False
 

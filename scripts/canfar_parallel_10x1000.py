@@ -27,10 +27,10 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from src.config import ClusterConfig, InjectionConfig
-from src.data_access import RubinDataAccess, HAS_LSST
-from src.pipeline import InjectionPipeline
-from src.retrieval import ClusterRetrieval
+from inject.config import ClusterConfig, InjectionConfig
+from inject.data_access import RubinDataAccess, HAS_LSST
+from inject.pipeline import InjectionPipeline
+from inject.retrieval import ClusterRetrieval
 
 
 def parse_json_dict(text: str | Dict[str, Any] | None) -> Dict[str, Any]:
@@ -188,7 +188,7 @@ def parse_args():
     # Detector hook
     parser.add_argument(
         "--detector-spec",
-        default="src.detection:run_cluster_detection",
+        default="inject.detection:run_cluster_detection",
         help="Python callable as module:function",
     )
     parser.add_argument(

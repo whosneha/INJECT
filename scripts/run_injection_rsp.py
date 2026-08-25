@@ -12,9 +12,9 @@ from matplotlib.colors import LogNorm
 import sys
 sys.path.insert(0, '/path/to/INJECT')  # Update this path
 
-from src.inject import inject_cluster, create_injection_catalog, inject_from_catalog
-from src.light_profiles import PlummerProfile, KingProfile
-from src.data_access import get_butler, load_coadd_image, pixel_to_sky
+from inject.inject import inject_cluster, create_injection_catalog, inject_from_catalog
+from inject.light_profiles import PlummerProfile, KingProfile
+from inject.data_access import get_butler, load_coadd_image, pixel_to_sky
 
 # LSST imports (only available on RSP)
 from lsst.daf.butler import Butler

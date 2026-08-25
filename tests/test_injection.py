@@ -20,13 +20,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 
-from src.light_profiles import KingProfile, EFFProfile, PlummerProfile, SersicProfile, mag_to_flux
-from src.inject import inject_cluster, create_injection_catalog, inject_from_catalog
+from inject.light_profiles import KingProfile, EFFProfile, PlummerProfile, SersicProfile, mag_to_flux
+from inject.inject import inject_cluster, create_injection_catalog, inject_from_catalog
 
 # Check if GalSim is available
 try:
     import galsim
-    from src.psf_convolution import convolve_with_psf, create_rubin_psf
+    from inject.psf_convolution import convolve_with_psf, create_rubin_psf
     HAS_GALSIM = True
 except ImportError:
     HAS_GALSIM = False

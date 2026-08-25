@@ -6,7 +6,7 @@ import numpy as np
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.inject import inject_clusters_rubin_psf, inspect_psf_mask
+from inject.inject import inject_clusters_rubin_psf, inspect_psf_mask
 
 
 class TestPsfMaskHandling(unittest.TestCase):

@@ -11,7 +11,7 @@ For current install and workflow guidance, use:
 
 ## Current State Snapshot
 
-- The active import path is `src`.
+- The active import path is `inject`.
 - The packaged CLI entry point is `injection-pipeline`.
 - The maintained notebooks are the four top-level files in `notebooks/`.
 - Older notebooks have been moved to `notebooks/archive/` for reference only.

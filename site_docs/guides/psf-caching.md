@@ -27,7 +27,7 @@ A naive run with repeated Rubin PSF evaluation pays three costs:
 The cache reuses previously evaluated PSFs using quantized spatial keys:
 
 ```python
-from src.inject import PSFCache
+from inject.inject import PSFCache
 
 cache = PSFCache(
     max_entries=2000,

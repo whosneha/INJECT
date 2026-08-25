@@ -1,6 +1,6 @@
 """Lightweight unit tests that do not require the scientific stack."""
 
-from src.config import ClusterConfig, InjectionConfig
+from inject.config import ClusterConfig, InjectionConfig
 
 
 def test_active_bands_defaults_to_single_band():

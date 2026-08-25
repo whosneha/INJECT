@@ -44,7 +44,7 @@ pip install -e ".[dev,jupyter]"
 Verify the install:
 
 ```bash
-python -c "import src; print(src.__version__)"
+python -c "import inject; print(inject.__version__)"
 pytest
 ```
 
@@ -82,7 +82,7 @@ Check that the environment works:
 ```bash
 source ~/venvs/inject-rsp/bin/activate
 python -c "from lsst.daf.butler import Butler; print('Butler import OK')"
-python -c "from src import InjectionConfig; print('INJECT import OK')"
+python -c "from inject import InjectionConfig; print('INJECT import OK')"
 ```
 
 You do not need notebook cells that manually search for the repo root or call `sys.path.insert(...)`.
@@ -105,7 +105,7 @@ the notebook is either using the wrong kernel or the Rubin stack was not set up 
 
 ```python
 import numpy as np
-from src import InjectionConfig, InjectionPipeline
+from inject import InjectionConfig, InjectionPipeline
 
 cfg = InjectionConfig()
 image = np.zeros((512, 512), dtype=float)
@@ -124,7 +124,7 @@ injection-pipeline --help
 
 ## Project Layout
 
-- `src/`: the active package implementation
+- `inject/`: the active package implementation
 - `tests/`: regression and packaging tests
 - `notebooks/`: the four maintained notebooks for current workflows
 - `notebooks/archive/`: older exploratory notebooks kept for reference only

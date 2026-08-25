@@ -19,13 +19,13 @@ On RSP, the usual pattern is:
 Normal imports should look like:
 
 ```python
-from src import InjectionConfig, InjectionPipeline
+from inject import InjectionConfig, InjectionPipeline
 ```
 
 For save locations, prefer:
 
 ```python
-from src import notebook_output_dir
+from inject import notebook_output_dir
 
 RUN_OUTPUT_DIR = notebook_output_dir("my_run")
 ```
@@ -68,5 +68,5 @@ RUN_OUTPUT_DIR = notebook_output_dir("my_run")
 ## Notes
 
 - Use the same package install and kernel across all four notebooks.
-- Prefer `src.notebook_output_dir(...)` or `config.output_dir` over hard-coded repo paths.
+- Prefer `inject.notebook_output_dir(...)` or `config.output_dir` over hard-coded repo paths.
 - `dp2_early_release_injection_smoke_test.ipynb` requires Rubin Butler and is meant for RSP-backed kernels, not a plain local notebook environment.

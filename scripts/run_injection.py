@@ -23,9 +23,9 @@ import json
 # Add parent directory to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.data_access import RubinDataAccess, HAS_LSST
-from src.inject import create_injection_catalog, inject_from_catalog
-from src.light_profiles import PlummerProfile, KingProfile
+from inject.data_access import RubinDataAccess, HAS_LSST
+from inject.inject import create_injection_catalog, inject_from_catalog
+from inject.light_profiles import PlummerProfile, KingProfile
 
 
 def main():

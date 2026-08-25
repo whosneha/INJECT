@@ -4,28 +4,28 @@ This page is generated from live code using mkdocstrings so API docs stay aligne
 
 ## Pipeline
 
-::: src.pipeline
+::: inject.pipeline
 
 ## Injection
 
-::: src.inject
+::: inject.inject
 
 ## Configuration
 
-::: src.config
+::: inject.config
 
 ## Detection
 
-::: src.detection
+::: inject.detection
 
 ## Completeness
 
-::: src.completeness
+::: inject.completeness
 
 ## Data Access
 
-::: src.data_access
+::: inject.data_access
 
 ## PSF Utilities
 
-::: src.psf_utils
+::: inject.psf_utils

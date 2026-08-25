@@ -19,12 +19,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 
-from src.light_profiles import PlummerProfile, KingProfile, mag_to_flux
+from inject.light_profiles import PlummerProfile, KingProfile, mag_to_flux
 
 # Check for GalSim
 try:
     import galsim
-    from src.psf_convolution import convolve_with_psf, create_rubin_psf, HAS_GALSIM
+    from inject.psf_convolution import convolve_with_psf, create_rubin_psf, HAS_GALSIM
 except ImportError:
     HAS_GALSIM = False
     print("ERROR: GalSim not installed. Install with: pip install galsim")

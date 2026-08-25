@@ -14,19 +14,19 @@ source "$VENV_PATH/bin/activate"
 python -m pip install --upgrade pip
 pip install -e ".[dev,jupyter]"
 python - <<'PY'
-import src
+import inject
 
 required = ["ClusterConfig", "InjectionConfig", "InjectionPipeline", "notebook_output_dir"]
-missing = [name for name in required if not hasattr(src, name)]
-src_file = getattr(src, "__file__", None)
+missing = [name for name in required if not hasattr(inject, name)]
+package_file = getattr(inject, "__file__", None)
 
-if src_file is None or missing:
+if package_file is None or missing:
     raise SystemExit(
-        "[inject-setup] Expected the INJECT package at repo/src/__init__.py, "
-        f"but imported src from {src_file!r} with missing symbols: {missing}"
+        "[inject-setup] Expected the INJECT package at repo/inject/__init__.py, "
+        f"but imported inject from {package_file!r} with missing symbols: {missing}"
     )
 
-print(f"[inject-setup] INJECT import OK from {src_file}")
+print(f"[inject-setup] INJECT import OK from {package_file}")
 PY
 
 echo

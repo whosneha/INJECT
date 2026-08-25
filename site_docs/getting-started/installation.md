@@ -33,7 +33,7 @@ pip install -e ".[dev,jupyter]"
 Check the install:
 
 ```bash
-python -c "from src import InjectionConfig; print('INJECT import OK')"
+python -c "from inject import InjectionConfig; print('INJECT import OK')"
 pytest
 ```
 
@@ -69,7 +69,7 @@ Check the install:
 ```bash
 source ~/venvs/inject-rsp/bin/activate
 python -c "from lsst.daf.butler import Butler; print('Butler import OK')"
-python -c "from src import InjectionConfig; print('INJECT import OK')"
+python -c "from inject import InjectionConfig; print('INJECT import OK')"
 ```
 
 Use it later:
@@ -83,7 +83,7 @@ Use it later:
 !!! warning "`ModuleNotFoundError: No module named 'lsst.daf'` in a notebook"
     Use the RSP setup above. That notebook needs Rubin Butler, so a plain local venv will not work.
 
-!!! warning "The notebook cannot import `src`"
+!!! warning "The notebook cannot import `inject`"
     Select the same kernel you installed into and restart the kernel.
 
 ## Recommended Starting Points

@@ -37,7 +37,7 @@ injection-pipeline --token YOUR_TOKEN --ra 55.0 --dec -30.0 --band i
 
 The repository still includes `scripts/run_injection.py` for script-first workflows, but the maintained user-facing entry point is the packaged `injection-pipeline` command.
 
-For notebooks, prefer importing from `src` inside the selected project kernel rather than shelling out to a script path.
+For notebooks, prefer importing from `inject` inside the selected project kernel rather than shelling out to a script path.
 
 ## Output Locations
 
