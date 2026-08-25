@@ -39,17 +39,29 @@ On RSP, do this from a copy of the repository that lives in your RSP workspace. 
 cd ~/repos
 git clone https://github.com/whosneha/INJECT.git
 cd INJECT
-pip install -e ".[dev,docs,jupyter]"
+python -m venv --system-site-packages ~/venvs/inject-rsp
+source ~/venvs/inject-rsp/bin/activate
+python -m pip install --upgrade pip
+pip install -e ".[jupyter]"
+python -m ipykernel install --user --name inject-rsp --display-name "Python (inject-rsp)"
 ```
 
-Open the RSP JupyterLab terminal through `File` -> `New` -> `Terminal`, run the commands above there, then open notebooks from the cloned `INJECT/` folder.
+Open the RSP JupyterLab terminal through `File` -> `New` -> `Terminal`, run the commands above there, then select the `Python (inject-rsp)` kernel before opening notebooks from the cloned `INJECT/` folder.
 
 If your latest work is only on your laptop, upload or copy the repo into RSP first, then run the install command from that copied folder.
 
 Once installed, notebook cells can import and call the package functions directly:
 
 ```python
-from star_cluster_injection import InjectionConfig, InjectionPipeline
+from src import InjectionConfig, InjectionPipeline
+```
+
+For notebook output folders, prefer:
+
+```python
+from src import notebook_output_dir
+
+RUN_OUTPUT_DIR = notebook_output_dir("quickstart_demo")
 ```
 
 ```bash
@@ -72,7 +84,7 @@ injection-pipeline \
 
 ```python
 import numpy as np
-from star_cluster_injection import InjectionConfig, InjectionPipeline
+from src import InjectionConfig, InjectionPipeline
 
 image = np.random.normal(100, 15, (500, 500))
 cfg = InjectionConfig()
@@ -89,4 +101,5 @@ print(f"Generated {len(catalog)} synthetic clusters")
 - Read [Use Cases](../guides/use-cases.md) to choose the right operating mode.
 - Move to [Configuration](../guides/configuration.md) to tune simulation parameters.
 - Use [Pipeline Workflows](../guides/pipeline-workflows.md) for batch and multiband runs.
+- Use [Notebook Guide](../guides/notebooks.md) for the maintained notebook set and archive status.
 - Review [Detection and Completeness](../guides/detection-and-completeness.md) for downstream analysis.

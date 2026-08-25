@@ -19,12 +19,14 @@ Best for:
 
 ## Workflow B: Main Notebook Examples
 
-The two main example workflows are:
+The main maintained notebook workflows are:
 
 - `simple_rubin_mci_demo.ipynb` for the simple single-run pattern
 - `simple_batch_injection_demo.ipynb` for the pooled repeated-run pattern
+- `simple_multiband_injection_demo.ipynb` for aligned multiband injections
+- `dp2_early_release_injection_smoke_test.ipynb` for quick Butler/collection smoke tests
 
-Use notebooks under `notebooks/` when you need visual debugging and iterative analysis.
+Use notebooks under `notebooks/` when you need visual debugging and iterative analysis. Older notebooks live in `notebooks/archive/` and are not part of the maintained workflow set.
 
 Recommended sequence for most users:
 

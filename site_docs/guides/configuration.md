@@ -23,7 +23,7 @@ The pipeline behavior is controlled through `InjectionConfig`, `ClusterConfig`, 
 ## Example Python Configuration
 
 ```python
-from star_cluster_injection import ClusterConfig, InjectionConfig
+from src import ClusterConfig, InjectionConfig
 
 config = InjectionConfig(
     run_name="paper_draft_rsp_i_band",

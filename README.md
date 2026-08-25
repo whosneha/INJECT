@@ -25,7 +25,7 @@ pip install -e ".[dev,jupyter]"
 Verify the install:
 
 ```bash
-python -c "import star_cluster_injection as sci; print(sci.__version__)"
+python -c "import src; print(src.__version__)"
 pytest
 ```
 
@@ -88,7 +88,7 @@ That means installing INJECT in an RSP user venv should no longer try to force a
 
 ```python
 import numpy as np
-from star_cluster_injection import InjectionConfig, InjectionPipeline
+from src import InjectionConfig, InjectionPipeline
 
 cfg = InjectionConfig()
 image = np.zeros((512, 512), dtype=float)
@@ -107,9 +107,10 @@ injection-pipeline --help
 
 ## Project Layout
 
-- `src/`: pipeline implementation
+- `src/`: the active package implementation
 - `tests/`: regression and packaging tests
-- `notebooks/`: example Rubin, PSF, and completeness workflows
+- `notebooks/`: the four maintained notebooks for current workflows
+- `notebooks/archive/`: older exploratory notebooks kept for reference only
 - `configs/`: sample configs for local and batch runs
 - `site_docs/`: MkDocs documentation source
 
@@ -129,6 +130,8 @@ python -m build --no-isolation
 - `notebooks/dp2_early_release_injection_smoke_test.ipynb`
 - `site_docs/getting-started/installation.md`
 - `site_docs/getting-started/quickstart.md`
+
+Older notebooks remain in `notebooks/archive/`, but they are not maintained as the primary workflow path.
 
 ## Notes
 

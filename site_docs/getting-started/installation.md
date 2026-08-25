@@ -56,7 +56,7 @@ When you run `pip install ...`, it:
 
 - reads the package metadata from `pyproject.toml`
 - installs the required dependencies
-- makes `star_cluster_injection` importable from Python and notebooks
+- makes `src` importable from Python and notebooks
 - installs the `injection-pipeline` command-line entry point
 
 The most common install patterns are:
@@ -154,7 +154,7 @@ Recommended notebooks:
 Once installed, notebook cells can import the package directly, for example:
 
 ```python
-from star_cluster_injection import InjectionConfig, InjectionPipeline
+from src import InjectionConfig, InjectionPipeline
 ```
 
 Band and data-mode notes:
@@ -167,7 +167,7 @@ Band and data-mode notes:
 ## 5. Verify The Installation
 
 ```bash
-python -c "import star_cluster_injection as sci; print(sci.__version__)"
+python -c "import src; print(src.__version__)"
 injection-pipeline --version
 ```
 

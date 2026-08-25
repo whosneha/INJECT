@@ -1,6 +1,6 @@
 # Notebook Guide
 
-The active notebook set has been trimmed down to four maintained entry points. Older exploratory, poster, benchmark, and legacy-path notebooks have been moved to `notebooks/archive/`.
+The active notebook set is intentionally small and focused on the four maintained entry points below.
 
 ## Setup
 
@@ -26,6 +26,12 @@ from src import notebook_output_dir
 
 RUN_OUTPUT_DIR = notebook_output_dir("my_run")
 ```
+
+## Maintenance Status
+
+- The four notebooks listed below are the maintained entry points for current workflows.
+- Older exploratory notebooks were moved to `notebooks/archive/`.
+- Files in `notebooks/archive/` are kept for reference, but they are not the recommended starting point and may still reflect older assumptions.
 
 ## Active Notebooks
 
@@ -58,6 +64,5 @@ RUN_OUTPUT_DIR = notebook_output_dir("my_run")
 
 ## Notes
 
-- `notebooks/archive/` contains older notebooks kept for historical reference.
-- Archived notebooks are not part of the maintained onboarding path.
-- If one of those older notebooks becomes important again, it should be refreshed before being promoted back into the active set.
+- Use the same package install and kernel across all four notebooks.
+- Prefer `src.notebook_output_dir(...)` or `config.output_dir` over hard-coded repo paths.

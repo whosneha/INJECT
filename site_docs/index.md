@@ -25,6 +25,7 @@
 - Treat that TAP/local path as the main easy-entry workflow; it uses fallback PSF handling rather than Rubin-native PSF computation.
 - Follow the simple single-run workflow shown in `simple_rubin_mci_demo.ipynb`.
 - Follow the pooled repeated-run workflow shown in `simple_batch_injection_demo.ipynb`.
+- Use the maintained notebook set under `notebooks/` and treat `notebooks/archive/` as historical reference only.
 - Use Butler/RSP mode for higher-fidelity PSF-aware runs on Rubin infrastructure.
 - Save configuration snapshots and outputs so science comparisons stay reproducible.
 

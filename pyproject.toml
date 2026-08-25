@@ -76,15 +76,14 @@ Repository = "https://github.com/whosneha/INJECT.git"
 Issues = "https://github.com/whosneha/INJECT/issues"
 
 [project.scripts]
-injection-pipeline = "star_cluster_injection.cli:main"
+injection-pipeline = "src.cli:main"
 
 [tool.setuptools]
 include-package-data = true
-packages = ["src", "star_cluster_injection"]
+packages = ["src"]
 
 [tool.setuptools.package-dir]
 src = "src"
-star_cluster_injection = "src/star_cluster_injection"
 
 [tool.black]
 line-length = 100
@@ -107,7 +106,7 @@ exclude = '''
 [tool.isort]
 profile = "black"
 line_length = 100
-known_first_party = ["src", "star_cluster_injection"]
+known_first_party = ["src"]
 skip_gitignore = true
 
 [tool.mypy]
