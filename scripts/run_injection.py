@@ -1,5 +1,5 @@
 """
-Unified injection script for star cluster injection pipeline.
+Unified injection script for INJECT.
 Auto-detects environment (RSP vs remote) and uses appropriate data access.
 
 Usage:
@@ -202,7 +202,7 @@ Examples:
         ax.set_xlabel('X (pixels)')
         ax.set_ylabel('Y (pixels)')
     
-    plt.suptitle(f'Star Cluster Injection Pipeline - {args.band}-band', fontsize=14)
+    plt.suptitle(f'INJECT - {args.band}-band', fontsize=14)
     plt.tight_layout()
     
     output_path = os.path.join(output_dir, 'injection_result.png')

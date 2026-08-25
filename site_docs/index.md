@@ -1,8 +1,8 @@
-# Star Cluster Injection Pipeline
+# INJECT
 
 <div class="hero">
   <div class="hero-kicker">Documentation</div>
-  <h1>Star Cluster Injection Pipeline</h1>
+  <h1>INJECT</h1>
   <p>Install the package, run injection-recovery experiments, compare detection behavior, and document completeness in a reproducible way.</p>
   <a class="hero-btn" href="getting-started/installation/">Installation</a>
 </div>

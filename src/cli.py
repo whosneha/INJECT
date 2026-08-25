@@ -1,4 +1,4 @@
-"""Console entry point for the packaged Star Cluster Injection Pipeline."""
+"""Console entry point for the packaged INJECT CLI."""
 
 import argparse
 import json

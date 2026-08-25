@@ -1,5 +1,5 @@
 """
-Tests for the star cluster injection pipeline.
+Tests for INJECT.
 
 Includes:
 - Unit tests for light profiles

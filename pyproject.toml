@@ -3,9 +3,9 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "star-cluster-injection-pipeline"
+name = "inject-pipeline"
 version = "0.1.0"
-description = "A comprehensive pipeline for injecting artificial star clusters into LSST Rubin Observatory images, with support for PSF convolution, detection testing, and completeness analysis."
+description = "INJECT is a Rubin/LSST-oriented pipeline for synthetic cluster injection, recovery, and completeness studies."
 readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "MIT"}
@@ -71,7 +71,7 @@ jupyter = [
 
 [project.urls]
 Homepage = "https://github.com/whosneha/INJECT"
-Documentation = "https://star-cluster-injection-pipeline.readthedocs.io"
+Documentation = "https://whosneha.github.io/INJECT/"
 Repository = "https://github.com/whosneha/INJECT.git"
 Issues = "https://github.com/whosneha/INJECT/issues"
 

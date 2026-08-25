@@ -1,5 +1,5 @@
 """
-Visualization module for star cluster injection pipeline.
+Visualization module for INJECT.
 
 Provides functions for:
 - Plotting postage stamps (intrinsic, PSF, convolved)

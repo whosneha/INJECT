@@ -41,7 +41,7 @@ python -m build
 Copy the wheel and supporting config files to the Arc project area, then install there inside a fresh virtual environment:
 
 ```bash
-pip install dist/star_cluster_injection_pipeline-0.1.0-py3-none-any.whl
+pip install dist/inject_pipeline-0.1.0-py3-none-any.whl
 ```
 
 ## Suggested Verification

@@ -1,4 +1,4 @@
-"""Internal package interface for the Star Cluster Injection Pipeline.
+"""Internal package interface for INJECT.
 
 The implementation modules live in this package. Imports are resolved lazily so
 lightweight metadata or configuration access does not require the full runtime

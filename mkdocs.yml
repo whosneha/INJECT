@@ -1,4 +1,4 @@
-site_name: Star Cluster Injection Pipeline Docs
+site_name: INJECT Docs
 site_description: End-to-end documentation for installation, workflows, and scientific usage.
 site_url: !ENV [READTHEDOCS_CANONICAL_URL, "https://whosneha.github.io/INJECT/"]
 docs_dir: site_docs

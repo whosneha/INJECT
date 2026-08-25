@@ -11,7 +11,7 @@ For current install and workflow guidance, use:
 
 ## Current State Snapshot
 
-- The active import path is `src`, not `star_cluster_injection`.
+- The active import path is `src`.
 - The packaged CLI entry point is `injection-pipeline`.
 - The maintained notebooks are the four top-level files in `notebooks/`.
 - Older notebooks have been moved to `notebooks/archive/` for reference only.
@@ -22,7 +22,7 @@ For current install and workflow guidance, use:
 
 Earlier versions of this summary described intermediate packaging decisions that no longer match the repository, including:
 
-- an old `star_cluster_injection` wrapper package
+- a legacy wrapper package
 - outdated usage examples
 - notebook assumptions that required manual path setup
 
