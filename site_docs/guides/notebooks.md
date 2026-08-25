@@ -13,11 +13,8 @@ Simple rule:
 
 On RSP, the usual pattern is:
 
-1. Run `source /opt/lsst/software/stack/loadLSST.bash`
-2. Run `setup lsst_distrib`
-3. Create `~/venvs/inject-rsp`
-4. Install `INJECT`
-5. Select `Python (inject-rsp)` in JupyterLab
+1. Run `bash scripts/setup_rsp_env.sh`
+2. Select `Python (inject-rsp)` in JupyterLab
 
 Normal imports should look like:
 

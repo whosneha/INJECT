@@ -18,6 +18,20 @@ Pick one setup path:
 
 ### Local
 
+Simple setup:
+
+```bash
+bash scripts/setup_local_env.sh
+```
+
+Then activate it when you want to work:
+
+```bash
+source .venv/bin/activate
+```
+
+Manual equivalent:
+
 ```bash
 git clone https://github.com/whosneha/INJECT.git
 cd INJECT
@@ -36,7 +50,20 @@ pytest
 
 ### Rubin Science Platform
 
-Run these commands in an RSP terminal:
+Simple setup:
+
+```bash
+bash scripts/setup_rsp_env.sh
+```
+
+Then use it like this:
+
+- Terminal use:
+  `source ~/venvs/inject-rsp/bin/activate`
+- Notebook use:
+  open the notebook, choose `Kernel` -> `Change Kernel` -> `Python (inject-rsp)`, then restart the kernel
+
+Manual equivalent:
 
 ```bash
 source /opt/lsst/software/stack/loadLSST.bash
@@ -57,13 +84,6 @@ source ~/venvs/inject-rsp/bin/activate
 python -c "from lsst.daf.butler import Butler; print('Butler import OK')"
 python -c "from src import InjectionConfig; print('INJECT import OK')"
 ```
-
-Then use it like this:
-
-- Terminal use:
-  `source ~/venvs/inject-rsp/bin/activate`
-- Notebook use:
-  open the notebook, choose `Kernel` -> `Change Kernel` -> `Python (inject-rsp)`, then restart the kernel
 
 You do not need notebook cells that manually search for the repo root or call `sys.path.insert(...)`.
 

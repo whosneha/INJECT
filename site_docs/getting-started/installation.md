@@ -7,6 +7,20 @@
 
 ## Local Setup
 
+Simple setup:
+
+```bash
+bash scripts/setup_local_env.sh
+```
+
+Then activate it when you want to work:
+
+```bash
+source .venv/bin/activate
+```
+
+Manual equivalent:
+
 ```bash
 git clone https://github.com/whosneha/INJECT.git
 cd INJECT
@@ -25,7 +39,18 @@ pytest
 
 ## RSP Setup
 
-Run these commands in an RSP terminal:
+Simple setup:
+
+```bash
+bash scripts/setup_rsp_env.sh
+```
+
+Then use it later with:
+
+- terminal: `source ~/venvs/inject-rsp/bin/activate`
+- notebook: `Kernel` -> `Change Kernel` -> `Python (inject-rsp)`
+
+Manual equivalent:
 
 ```bash
 source /opt/lsst/software/stack/loadLSST.bash
