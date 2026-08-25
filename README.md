@@ -31,7 +31,9 @@ pytest
 
 ### Rubin Science Platform
 
-The safest RSP pattern is a per-user virtual environment that can still see the shared Rubin stack. That keeps your installs isolated from other users while avoiding duplicate installs of large Rubin dependencies.
+Use one venv just for this project, then register that venv as a Jupyter kernel.
+
+Create it once:
 
 ```bash
 git clone https://github.com/whosneha/INJECT.git
@@ -43,13 +45,21 @@ pip install -e ".[jupyter]"
 python -m ipykernel install --user --name inject-rsp --display-name "Python (inject-rsp)"
 ```
 
-Why this helps on RSP:
+Use it later from a terminal:
 
-- `--system-site-packages` lets the venv reuse the platform's Rubin/LSST packages
-- `pip install ...` writes into your own venv, not the shared environment
-- the dedicated kernel makes notebook imports reproducible and avoids cross-project contamination
+```bash
+cd ~/path/to/INJECT
+source ~/venvs/inject-rsp/bin/activate
+python -c "import src; print(src.__version__)"
+```
 
-If you are working from a cloned repo with local edits, open notebooks from that same repo checkout and select the `Python (inject-rsp)` kernel.
+Use it later from JupyterLab:
+
+1. Open the notebook from your `INJECT` checkout.
+2. Choose `Kernel` -> `Change Kernel` -> `Python (inject-rsp)`.
+3. Restart the kernel and run from the top.
+
+If you are working from a cloned repo with local edits, open notebooks from that same repo checkout and use the `Python (inject-rsp)` kernel.
 
 ### One-Time RSP Jupyter Setup
 
@@ -70,17 +80,17 @@ After that:
 
 You do not need notebook cells that manually search for the repo root or call `sys.path.insert(...)`.
 
-## NumPy Compatibility
+### Butler Notebook Requirement
 
-The package metadata now allows `numpy>=1.21.0` with no `<2` cap.
+Not every notebook needs Rubin Butler, but `dp2_early_release_injection_smoke_test.ipynb` does.
 
-Why that changed:
+If you see:
 
-- the previous `numpy<2` pin caused conflicts on RSP because the shared Rubin environment may already depend on newer NumPy
-- the codebase does not appear to rely on removed pre-2.0 NumPy APIs
-- the current test suite passes in this repository with `numpy 2.3.1`
+```python
+ModuleNotFoundError: No module named 'lsst.daf'
+```
 
-That means installing INJECT in an RSP user venv should no longer try to force a NumPy downgrade that could interfere with Rubin-adjacent packages.
+that usually means the notebook is running in the wrong kernel or outside RSP. A plain local venv can import `src`, but it will not provide Rubin Butler modules unless it can see the Rubin stack.
 
 ## Common Workflows
 

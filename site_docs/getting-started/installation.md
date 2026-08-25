@@ -48,6 +48,27 @@ cd INJECT
 
 On RSP, `--system-site-packages` is usually the right choice because it lets your personal venv reuse the shared Rubin stack while keeping your own `pip` installs out of the shared environment.
 
+### Project-Specific RSP Venv
+
+If you want one environment dedicated to INJECT on RSP, use this exact pattern:
+
+```bash
+cd ~/repos
+git clone https://github.com/whosneha/INJECT.git
+cd INJECT
+python -m venv --system-site-packages ~/venvs/inject-rsp
+source ~/venvs/inject-rsp/bin/activate
+python -m pip install --upgrade pip
+pip install -e ".[jupyter]"
+python -m ipykernel install --user --name inject-rsp --display-name "Python (inject-rsp)"
+```
+
+From then on:
+
+- in a terminal, activate it with `source ~/venvs/inject-rsp/bin/activate`
+- in JupyterLab, select `Kernel` -> `Change Kernel` -> `Python (inject-rsp)`
+- open notebooks from the same `INJECT` checkout you installed from
+
 ## 3. Install The Package
 
 `pip` is the tool that installs this repository as a Python package into your active environment.
@@ -93,6 +114,15 @@ python -m ipykernel install --user --name inject-rsp --display-name "Python (inj
 ```
 
 After that, select the `Python (inject-rsp)` kernel in JupyterLab and import the package normally. You should not need notebook cells that manually search for the repository root or call `sys.path.insert(...)`.
+
+For a quick terminal check on RSP:
+
+```bash
+source ~/venvs/inject-rsp/bin/activate
+python -c "import sys; print(sys.executable)"
+python -c "import src; print(src.__version__)"
+python -c "from lsst.daf.butler import Butler; print('Butler import OK')"
+```
 
 ### One-Time RSP Jupyter Kernel Setup
 
@@ -201,6 +231,9 @@ python -m build --no-isolation
 
 !!! warning "Rubin Butler imports fail locally"
     That is expected outside an RSP environment. Use TAP-mode workflows or mock data examples when running remotely.
+
+!!! warning "`ModuleNotFoundError: No module named 'lsst.daf'` in a notebook"
+    The notebook is not running with an RSP-backed kernel. On RSP, switch to `Python (inject-rsp)` and restart the kernel. Outside RSP, Butler notebooks will not work unless you separately provide the Rubin stack.
 
 !!! warning "TAP or local runs do not reproduce Rubin-native PSF computation"
     Those modes use the GalSim-based fallback PSF path. Use the RSP notebook workflow when realistic Rubin PSF handling is part of the science goal.

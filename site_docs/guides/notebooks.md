@@ -13,6 +13,11 @@ Typical RSP flow:
 3. Register and select that kernel in JupyterLab.
 4. Open one of the active notebooks below.
 
+If you are reopening a notebook later, the important part is:
+
+- terminal run: `source ~/venvs/inject-rsp/bin/activate`
+- notebook run: select `Python (inject-rsp)` as the kernel
+
 Normal imports should look like:
 
 ```python
@@ -66,3 +71,4 @@ RUN_OUTPUT_DIR = notebook_output_dir("my_run")
 
 - Use the same package install and kernel across all four notebooks.
 - Prefer `src.notebook_output_dir(...)` or `config.output_dir` over hard-coded repo paths.
+- `dp2_early_release_injection_smoke_test.ipynb` requires Rubin Butler and is meant for RSP-backed kernels, not a plain local notebook environment.
