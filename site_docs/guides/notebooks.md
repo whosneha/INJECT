@@ -6,17 +6,18 @@ The active notebook set is intentionally small and focused on the four maintaine
 
 Use the same Python environment as your package install and prefer the installed notebook kernel over any `sys.path` setup inside the notebook.
 
-Typical RSP flow:
+Simple rule:
 
-1. Clone or copy the repository into your workspace.
-2. Install it into your venv.
-3. Register and select that kernel in JupyterLab.
-4. Open one of the active notebooks below.
+- terminal run: activate the same venv you installed into
+- notebook run: select the same Jupyter kernel you registered from that venv
 
-If you are reopening a notebook later, the important part is:
+On RSP, the usual pattern is:
 
-- terminal run: `source ~/venvs/inject-rsp/bin/activate`
-- notebook run: select `Python (inject-rsp)` as the kernel
+1. Run `source /opt/lsst/software/stack/loadLSST.bash`
+2. Run `setup lsst_distrib`
+3. Create `~/venvs/inject-rsp`
+4. Install `INJECT`
+5. Select `Python (inject-rsp)` in JupyterLab
 
 Normal imports should look like:
 
