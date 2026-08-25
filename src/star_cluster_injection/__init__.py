@@ -30,6 +30,8 @@ _EXPORTS = {
     "ClusterRetrieval": ("src.retrieval", "ClusterRetrieval"),
     "save_catalog": ("src.io", "save_catalog"),
     "load_results": ("src.io", "load_results"),
+    "editable_repo_root": ("star_cluster_injection.notebooks", "editable_repo_root"),
+    "notebook_output_dir": ("star_cluster_injection.notebooks", "notebook_output_dir"),
 }
 
 __all__ = sorted([*_EXPORTS.keys(), "__author__", "__license__", "__version__"])

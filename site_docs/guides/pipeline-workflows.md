@@ -31,14 +31,14 @@ Recommended sequence for most users:
 1. `simple_rubin_mci_demo.ipynb`
 2. `simple_batch_injection_demo.ipynb`
 3. `simple_multiband_injection_demo.ipynb`
-4. `full_pipeline_rubin_psf.ipynb`
+4. `dp2_early_release_injection_smoke_test.ipynb`
 
 If you are doing real Rubin PSF-aware science, start with the RSP-oriented notebooks first:
 
-1. `tutorial_injection.ipynb`
-2. `injection_pipeline_rsp.ipynb`
-3. `full_pipeline_rubin_psf.ipynb`
-4. `multi_injection_pipeline_with_diagnostics_rsp.ipynb`
+1. `simple_rubin_mci_demo.ipynb`
+2. `simple_batch_injection_demo.ipynb`
+3. `simple_multiband_injection_demo.ipynb`
+4. `dp2_early_release_injection_smoke_test.ipynb`
 
 ## Workflow C: Batch Injection With Shared PSF Cache
 

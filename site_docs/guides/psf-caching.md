@@ -102,7 +102,7 @@ Start conservatively on RSP, then tune `n_workers`, cache size, and checkpoint l
 
 ## Benchmarking References
 
-See the notebooks:
+Historical benchmark notebooks are available in `notebooks/archive/`:
 
 - `PSF_Caching_Benchmark_Analysis.ipynb`
 - `PSF_Caching_RealData_Benchmark.ipynb`

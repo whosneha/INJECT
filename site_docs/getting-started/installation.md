@@ -39,6 +39,15 @@ cd INJECT
     .venv\Scripts\Activate.ps1
     ```
 
+=== "Rubin Science Platform"
+
+    ```bash
+    python -m venv --system-site-packages ~/venvs/inject-rsp
+    source ~/venvs/inject-rsp/bin/activate
+    ```
+
+On RSP, `--system-site-packages` is usually the right choice because it lets your personal venv reuse the shared Rubin stack while keeping your own `pip` installs out of the shared environment.
+
 ## 3. Install The Package
 
 `pip` is the tool that installs this repository as a Python package into your active environment.
@@ -63,7 +72,7 @@ python -m pip install --upgrade pip
 pip install .
 ```
 
-This project currently requires `numpy<2`. The package metadata should enforce that automatically on a fresh install.
+This project supports `numpy>=1.21.0` and is no longer capped below NumPy 2.
 
 For development, testing, and docs work:
 
@@ -77,11 +86,26 @@ For notebook-heavy work:
 pip install -e ".[dev,docs,jupyter]"
 ```
 
-If you already created an environment with NumPy 2.x and hit import or binary-compatibility issues, run:
+If you want a notebook kernel tied to this environment:
 
 ```bash
-pip install "numpy<2"
+python -m ipykernel install --user --name inject-rsp --display-name "Python (inject-rsp)"
 ```
+
+After that, select the `Python (inject-rsp)` kernel in JupyterLab and import the package normally. You should not need notebook cells that manually search for the repository root or call `sys.path.insert(...)`.
+
+### One-Time RSP Jupyter Kernel Setup
+
+If you want the shortest reliable setup for RSP notebooks, run this once in an RSP terminal:
+
+```bash
+python -m venv --system-site-packages ~/venvs/inject-rsp
+source ~/venvs/inject-rsp/bin/activate
+pip install -e /path/to/INJECT ipykernel
+python -m ipykernel install --user --name inject-rsp --display-name "Python (inject-rsp)"
+```
+
+After that, you usually do not need any extra notebook setup beyond selecting the `Python (inject-rsp)` kernel in JupyterLab.
 
 ## 4. RSP Notebook Setup
 
@@ -102,7 +126,10 @@ If the repo already lives on GitHub:
 cd ~/repos
 git clone https://github.com/whosneha/INJECT.git
 cd INJECT
+python -m venv --system-site-packages ~/venvs/inject-rsp
+source ~/venvs/inject-rsp/bin/activate
 pip install -e ".[dev,docs,jupyter]"
+python -m ipykernel install --user --name inject-rsp --display-name "Python (inject-rsp)"
 ```
 
 If you are working from local unpublished changes, copy or upload the repository folder into your RSP workspace first, then open a terminal inside that copied folder and run the same install command there.
@@ -113,15 +140,16 @@ Recommended workflow:
 2. Copy or clone this repository into your workspace.
 3. Open a terminal in the repository root on RSP.
 4. Install the package into the notebook environment from the cloned repository.
-5. Open notebooks from that cloned repository folder.
-6. Start from one of the RSP-oriented example notebooks.
+5. Register a dedicated kernel if you want the environment selectable in JupyterLab.
+6. Open notebooks from that cloned repository folder.
+7. Start from one of the RSP-oriented example notebooks.
 
 Recommended notebooks:
 
-- `notebooks/tutorial_injection.ipynb`
-- `notebooks/injection_pipeline_rsp.ipynb`
-- `notebooks/full_pipeline_rubin_psf.ipynb`
-- `notebooks/multi_injection_pipeline_with_diagnostics_rsp.ipynb`
+- `notebooks/simple_rubin_mci_demo.ipynb`
+- `notebooks/simple_batch_injection_demo.ipynb`
+- `notebooks/simple_multiband_injection_demo.ipynb`
+- `notebooks/dp2_early_release_injection_smoke_test.ipynb`
 
 Once installed, notebook cells can import the package directly, for example:
 
@@ -169,7 +197,7 @@ python -m build --no-isolation
     Confirm the active environment has the runtime dependencies from `requirements.txt` or install via `pip install -e ".[dev]"`.
 
 !!! warning "Notebook kernel cannot import project modules"
-    Select the same Python environment used for installation, then restart the notebook kernel.
+    Select the same Python environment or registered kernel used for installation, then restart the notebook kernel.
 
 !!! warning "Rubin Butler imports fail locally"
     That is expected outside an RSP environment. Use TAP-mode workflows or mock data examples when running remotely.

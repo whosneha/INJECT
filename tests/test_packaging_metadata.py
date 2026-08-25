@@ -20,5 +20,13 @@ def test_pyproject_points_console_script_at_public_package():
     assert pyproject["project"]["scripts"]["injection-pipeline"] == "star_cluster_injection.cli:main"
 
 
+def test_pyproject_does_not_cap_numpy_below_v2():
+    pyproject = tomllib.loads((PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+
+    numpy_spec = next(dep for dep in pyproject["project"]["dependencies"] if dep.startswith("numpy"))
+
+    assert "<2" not in numpy_spec
+
+
 def test_public_package_directory_exists():
     assert (PROJECT_ROOT / "src" / "star_cluster_injection" / "__init__.py").exists()

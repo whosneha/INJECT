@@ -10,7 +10,7 @@ from matplotlib.colors import LogNorm
 
 # Import the injection pipeline
 import sys
-sys.path.insert(0, '/path/to/star-cluster-injection-pipeline')  # Update this path
+sys.path.insert(0, '/path/to/INJECT')  # Update this path
 
 from src.inject import inject_cluster, create_injection_catalog, inject_from_catalog
 from src.light_profiles import PlummerProfile, KingProfile
