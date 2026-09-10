@@ -15,8 +15,10 @@ echo "[inject-setup] kernel: $KERNEL_DISPLAY_NAME"
 
 cd "$REPO_ROOT"
 
+set +u
 source /opt/lsst/software/stack/loadLSST.bash
 setup lsst_distrib
+set -u
 
 mkdir -p "$(dirname "$VENV_PATH")"
 python -m venv --system-site-packages "$VENV_PATH"
@@ -26,8 +28,10 @@ pip install -e ".[jupyter]"
 
 cat > "$ACTIVATE_RSP_PATH" <<EOF
 # Source this file to load the Rubin stack and activate the INJECT venv.
+set +u
 source /opt/lsst/software/stack/loadLSST.bash
 setup lsst_distrib
+set -u
 source "$VENV_PATH/bin/activate"
 EOF
 chmod +x "$ACTIVATE_RSP_PATH"
@@ -73,8 +77,8 @@ if package_file is None or missing:
 print(f"[inject-setup] INJECT import OK from {package_file}")
 PY
 
-bash -lc "source /opt/lsst/software/stack/loadLSST.bash && setup lsst_distrib && source \"$VENV_PATH/bin/activate\" && python -c \"from lsst.daf.butler import Butler; print('[inject-setup] Butler import OK inside kernel environment')\""
-bash -lc "source /opt/lsst/software/stack/loadLSST.bash && setup lsst_distrib && source \"$VENV_PATH/bin/activate\" && python -c \"import inject; print('[inject-setup] Kernel imports INJECT from ' + inject.__file__)\""
+bash -lc "set +u && source /opt/lsst/software/stack/loadLSST.bash && setup lsst_distrib && set -u && source \"$VENV_PATH/bin/activate\" && python -c \"from lsst.daf.butler import Butler; print('[inject-setup] Butler import OK inside kernel environment')\""
+bash -lc "set +u && source /opt/lsst/software/stack/loadLSST.bash && setup lsst_distrib && set -u && source \"$VENV_PATH/bin/activate\" && python -c \"import inject; print('[inject-setup] Kernel imports INJECT from ' + inject.__file__)\""
 
 echo
 echo "[inject-setup] RSP setup complete."
