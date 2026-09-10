@@ -1,6 +1,6 @@
 # Deployment
 
-This project is now set up for two practical delivery paths that satisfy the current release goal: a pip-installable Python package and a container build that can be pushed to Harbor once credentials are available.
+This project is now set up for three practical delivery paths that satisfy the current release goal: a pip-installable Python package, a Rubin Science Platform install, and a container build that can be pushed to Harbor once credentials are available.
 
 ## Path 1: Pip-Installable Package
 
@@ -18,7 +18,51 @@ Recommended release checks:
 - `twine check dist/*`
 - `mkdocs build`
 
-## Path 2: Harbor-Ready Container
+## Path 2: Rubin Science Platform
+
+Use this path for Butler-backed notebooks and coadd-based workflows on RSP.
+
+RSP already provides Rubin Science Pipelines in `/opt/lsst/software/stack`. INJECT uses that platform stack; do not try to install `lsst_distrib` from PyPI.
+
+### Standard Rubin Kernel
+
+Use this first if you want the simplest notebook path:
+
+```bash
+setup lsst_distrib
+cd INJECT
+python -m pip install --user -e ".[jupyter]"
+```
+
+Then select the standard Rubin Science Pipelines kernel in RSP JupyterLab.
+
+### Project Venv Kernel
+
+Use this if you want an isolated INJECT environment and a named `Python (inject-rsp)` kernel.
+
+From an RSP terminal in the cloned repository:
+
+```bash
+bash scripts/setup_rsp_env.sh
+```
+
+The setup script:
+
+- loads the Rubin stack with `setup lsst_distrib`
+- creates `~/venvs/inject-rsp` using `--system-site-packages`
+- installs INJECT with its runtime dependencies and `jupyter` extras
+- writes `~/venvs/inject-rsp/bin/activate-rsp` for future terminal sessions
+- registers the `Python (inject-rsp)` Jupyter kernel
+
+Use the environment later with:
+
+```bash
+source ~/venvs/inject-rsp/bin/activate-rsp
+```
+
+In RSP JupyterLab, select `Python (inject-rsp)` before running Butler-backed notebooks.
+
+## Path 3: Harbor-Ready Container
 
 A repository `Dockerfile` is included so the pipeline can be built as a container image.
 

@@ -50,7 +50,20 @@ pytest
 
 ### Rubin Science Platform
 
-Simple setup:
+RSP already provides the Rubin Science Pipelines environment. You do not need a virtual environment just to import Rubin Butler; the important step is using a kernel or terminal session where `lsst_distrib` has been set up.
+
+Use the standard RSP Rubin kernel if you only need the platform stack plus this checkout. From an RSP terminal:
+
+```bash
+setup lsst_distrib
+git clone https://github.com/whosneha/INJECT.git
+cd INJECT
+python -m pip install --user -e ".[jupyter]"
+```
+
+Then open the notebook with the standard Rubin Science Pipelines kernel.
+
+Use the project venv setup if you want an isolated INJECT environment and a named `Python (inject-rsp)` kernel:
 
 ```bash
 bash scripts/setup_rsp_env.sh
@@ -59,7 +72,7 @@ bash scripts/setup_rsp_env.sh
 Then use it like this:
 
 - Terminal use:
-  `source ~/venvs/inject-rsp/bin/activate`
+  `source ~/venvs/inject-rsp/bin/activate-rsp`
 - Notebook use:
   open the notebook, choose `Kernel` -> `Change Kernel` -> `Python (inject-rsp)`, then restart the kernel
 
@@ -70,26 +83,30 @@ source /opt/lsst/software/stack/loadLSST.bash
 setup lsst_distrib
 git clone https://github.com/whosneha/INJECT.git
 cd INJECT
+mkdir -p ~/venvs
 python -m venv --system-site-packages ~/venvs/inject-rsp
 source ~/venvs/inject-rsp/bin/activate
 python -m pip install --upgrade pip
 pip install -e ".[jupyter]"
-python -m ipykernel install --user --name inject-rsp --display-name "Python (inject-rsp)"
 ```
+
+For a custom venv kernel, use `scripts/setup_rsp_env.sh` rather than plain `python -m ipykernel install`; the script writes a kernel launcher that loads the Rubin stack before Python starts.
 
 Check that the environment works:
 
 ```bash
-source ~/venvs/inject-rsp/bin/activate
+source ~/venvs/inject-rsp/bin/activate-rsp
 python -c "from lsst.daf.butler import Butler; print('Butler import OK')"
 python -c "from inject import InjectionConfig; print('INJECT import OK')"
 ```
+
+`scripts/setup_rsp_env.sh` does not install Rubin Science Pipelines. It uses the RSP copy in `/opt/lsst/software/stack`, runs `setup lsst_distrib`, installs the INJECT runtime dependencies from `pyproject.toml`, adds the notebook extras, and writes `~/venvs/inject-rsp/bin/activate-rsp`. It also registers a Jupyter kernel that launches with Rubin stack setup already loaded, so Butler-backed notebooks should work without extra notebook-side setup.
 
 You do not need notebook cells that manually search for the repo root or call `sys.path.insert(...)`.
 
 ### Butler Notebook Note
 
-`dp2_early_release_injection_smoke_test.ipynb` requires Rubin Butler and should be run on RSP with the `Python (inject-rsp)` kernel.
+`dp2_early_release_injection_smoke_test.ipynb` requires Rubin Butler and should be run on RSP with either the standard Rubin Science Pipelines kernel or the `Python (inject-rsp)` kernel.
 
 If you see:
 
@@ -97,7 +114,7 @@ If you see:
 ModuleNotFoundError: No module named 'lsst.daf'
 ```
 
-the notebook is either using the wrong kernel or the Rubin stack was not set up before the venv was created.
+the notebook is using a kernel that has not loaded `lsst_distrib`. Switch to the standard Rubin Science Pipelines kernel, or rerun `bash scripts/setup_rsp_env.sh` and restart with `Python (inject-rsp)`.
 
 ## Common Workflows
 

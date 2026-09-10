@@ -16,6 +16,8 @@ On RSP, the usual pattern is:
 1. Run `bash scripts/setup_rsp_env.sh`
 2. Select `Python (inject-rsp)` in JupyterLab
 
+For RSP terminal sessions, use `source ~/venvs/inject-rsp/bin/activate-rsp` so the Rubin stack and INJECT virtual environment are loaded together.
+
 Normal imports should look like:
 
 ```python

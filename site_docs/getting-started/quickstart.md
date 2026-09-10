@@ -39,14 +39,10 @@ On RSP, do this from a copy of the repository that lives in your RSP workspace. 
 cd ~/repos
 git clone https://github.com/whosneha/INJECT.git
 cd INJECT
-python -m venv --system-site-packages ~/venvs/inject-rsp
-source ~/venvs/inject-rsp/bin/activate
-python -m pip install --upgrade pip
-pip install -e ".[jupyter]"
-python -m ipykernel install --user --name inject-rsp --display-name "Python (inject-rsp)"
+bash scripts/setup_rsp_env.sh
 ```
 
-Open the RSP JupyterLab terminal through `File` -> `New` -> `Terminal`, run the commands above there, then select the `Python (inject-rsp)` kernel before opening notebooks from the cloned `INJECT/` folder.
+Open the RSP JupyterLab terminal through `File` -> `New` -> `Terminal`, run the commands above there, then select the `Python (inject-rsp)` kernel before opening notebooks from the cloned `INJECT/` folder. For later terminal sessions, run `source ~/venvs/inject-rsp/bin/activate-rsp` from any shell.
 
 If your latest work is only on your laptop, upload or copy the repo into RSP first, then run the install command from that copied folder.
 
