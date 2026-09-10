@@ -27,6 +27,8 @@ DEFAULT_PSF_BAD_MASK_PLANES = (
     'EDGE',
 )
 
+RUBIN_BANDS = ('u', 'g', 'r', 'i', 'z', 'y')
+
 
 def distance_modulus(distance_pc: float) -> float:
     """Return distance modulus for a distance in parsecs."""
@@ -109,7 +111,15 @@ class InjectionConfig:
     @property
     def active_bands(self) -> list[str]:
         """Always returns a list — works for both single and multi-band."""
-        return self.bands if self.bands is not None else [self.band]
+        bands = self.bands if self.bands is not None else [self.band]
+        if not bands:
+            raise ValueError('at least one band must be configured')
+
+        unknown_bands = [band for band in bands if band not in RUBIN_BANDS]
+        if unknown_bands:
+            raise ValueError(f'Unknown Rubin band(s): {unknown_bands}')
+
+        return bands
 
     def __repr__(self):
         cc = self.cluster_config

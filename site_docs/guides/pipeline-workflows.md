@@ -85,7 +85,10 @@ That is useful when:
 Band configuration is explicit:
 
 - Use `band="i"` for a single-band run.
-- Use `bands=["g", "r", "i"]` when you want matched multiband runs.
+- Use `bands=["g", "r", "i"]` when you want a specific matched multiband subset.
+- Use `bands=["u", "g", "r", "i", "z", "y"]` when you want all Rubin optical bands.
+
+When `bands` is set, it overrides `band`. The pipeline uses `config.active_bands` internally, so single-band and multiband configs both resolve to a list of active bands.
 
 ## PSF Fidelity: RSP vs TAP
 

@@ -125,6 +125,34 @@ For early testing:
 
 ## Single-Band Vs Multi-Band
 
+Users can choose one band, a specific combination of bands, or all Rubin bands.
+
+Single-band runs use `band`:
+
+```python
+config = InjectionConfig(
+    band="i",
+)
+```
+
+Matched multiband runs use `bands`. When `bands` is provided, it overrides the single `band` value:
+
+```python
+config = InjectionConfig(
+    bands=["g", "r", "i"],
+)
+```
+
+All Rubin optical bands are just the full explicit list:
+
+```python
+config = InjectionConfig(
+    bands=["u", "g", "r", "i", "z", "y"],
+)
+```
+
+`config.active_bands` always returns the list the pipeline will use. Valid band names are `u`, `g`, `r`, `i`, `z`, and `y`.
+
 Single-band is ideal for algorithm debugging and fast iteration.
 
 Multi-band runs are recommended when:

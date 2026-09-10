@@ -1,0 +1,233 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{amsmath}
+\usepackage{enumitem}
+\usepackage{xcolor}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    urlcolor=blue,
+    citecolor=blue
+}
+
+\title{INJECT: Science Use Cases and Pipeline Overview}
+\author{Sneha Nair}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+INJECT is a Rubin/LSST-oriented artificial star-cluster injection pipeline for injection-recovery experiments, detector benchmarking, and completeness studies. The package supports smooth analytic cluster profiles, discrete-star cluster generation, Rubin Science Platform workflows, local exploratory workflows, user-defined detection functions, and reproducible output bookkeeping. This document summarizes the science motivation, supported use cases, main pipeline stages, and configuration choices for collaborators and project planning.
+\end{abstract}
+
+\section{Project Motivation}
+
+Artificial-source injection is a direct way to measure what a detection or measurement pipeline can recover from real astronomical images. INJECT focuses on synthetic star clusters rather than isolated point sources. The core science question is:
+
+\begin{quote}
+Given a population of clusters with known input properties, which objects are recovered by a detector, and how does recovery depend on magnitude, size, profile shape, band, local background, and PSF behavior?
+\end{quote}
+
+The package is designed for Rubin-era cluster searches where completeness and failure modes must be measured under realistic image conditions.
+
+\section{Primary Science Use Cases}
+
+\subsection{Detector Benchmarking}
+
+INJECT can be used to compare detection methods on the same injected truth catalog. A user can inject clusters, run a detector, match detections back to injected positions, and compare recovery metrics across detector versions or parameter choices.
+
+Recommended setup:
+\begin{itemize}[leftmargin=*]
+    \item Start with one band and a small number of injected clusters.
+    \item Use fixed random seeds while tuning the detector.
+    \item Save both injected truth catalogs and detection catalogs.
+    \item Compare completeness versus magnitude and half-light radius.
+\end{itemize}
+
+\subsection{Completeness Studies}
+
+Completeness studies ask what fraction of injected clusters are recovered as a function of input properties. The most common completeness metric is
+
+\begin{equation}
+    C(x) = \frac{N_{\mathrm{recovered}}(x)}{N_{\mathrm{injected}}(x)},
+\end{equation}
+
+where $x$ may be magnitude, half-light radius, concentration, color, background level, or another science variable.
+
+Recommended setup:
+\begin{itemize}[leftmargin=*]
+    \item Use broad but scientifically motivated parameter ranges.
+    \item Run repeated batches to populate each bin with enough injected objects.
+    \item Store configuration snapshots with each run.
+    \item Report binning choices, matching radius, quality cuts, and uncertainty estimates.
+\end{itemize}
+
+\subsection{PSF-Sensitive Validation}
+
+Cluster detectability depends on the local point-spread function. On the Rubin Science Platform, INJECT can use Rubin Butler coadds and Rubin-native PSF objects. The pipeline can also record Rubin PSF-quality mask flags for each injection position.
+
+Recommended setup:
+\begin{itemize}[leftmargin=*]
+    \item Run on RSP when Rubin-native PSF evaluation is required.
+    \item Use \texttt{use\_actual\_psf=True}.
+    \item Keep PSF mask flag recording enabled.
+    \item Decide whether to keep flagged locations for auditing or skip them with \texttt{skip\_bad\_psf\_regions=True}.
+\end{itemize}
+
+\subsection{Multiband Injection-Recovery}
+
+INJECT supports one band, selected band combinations, or all Rubin optical bands. Multiband runs keep injected cluster positions aligned across bands so that recovery can be compared consistently.
+
+Examples:
+\begin{verbatim}
+InjectionConfig(band="i")
+InjectionConfig(bands=["g", "r", "i"])
+InjectionConfig(bands=["u", "g", "r", "i", "z", "y"])
+\end{verbatim}
+
+Use multiband workflows when detection uses color information, when band-to-band recovery differences matter, or when completeness must be reported across multiple filters.
+
+\subsection{Remote Rubin Access and Local Development}
+
+Not every workflow needs the Rubin stack. INJECT also supports local or TAP-style exploratory runs that use fallback PSF handling. This is useful for development, demonstrations, and early detector experiments before moving to full Butler-backed RSP runs.
+
+\section{Pipeline Overview}
+
+The main pipeline sequence is:
+
+\begin{enumerate}[leftmargin=*]
+    \item Configure the run with \texttt{InjectionConfig} and \texttt{ClusterConfig}.
+    \item Load image data from an array, TAP-style cutout, or Rubin Butler coadd.
+    \item Generate an injected truth catalog with positions and cluster properties.
+    \item Render synthetic clusters using smooth profiles or discrete-star generation.
+    \item Convolve with Rubin-native or fallback PSF models.
+    \item Add injections to the image.
+    \item Run a user-supplied detector.
+    \item Match detections to the truth catalog.
+    \item Compute completeness and recovery summaries.
+    \item Save catalogs, checkpoints, and diagnostic plots.
+\end{enumerate}
+
+\section{Core Configuration Concepts}
+
+\subsection{Cluster Population}
+
+\texttt{ClusterConfig} controls the injected cluster population:
+
+\begin{itemize}[leftmargin=*]
+    \item profile family: \texttt{king}, \texttt{plummer}, \texttt{eff}, or \texttt{sersic}
+    \item injection method: \texttt{smooth} or \texttt{discrete}
+    \item apparent AB magnitude range
+    \item half-light radius range in pixels
+    \item concentration range
+    \item age range for population bookkeeping and discrete-star workflows
+\end{itemize}
+
+\subsection{Run-Level Controls}
+
+\texttt{InjectionConfig} controls run behavior:
+
+\begin{itemize}[leftmargin=*]
+    \item run name and output directory
+    \item number of clusters
+    \item random seed
+    \item single-band or multiband selection
+    \item cutout size and edge buffer
+    \item PSF strategy and fallback FWHM
+    \item PSF mask flag recording and bad-region skipping
+    \item Butler provenance such as tract and patch
+\end{itemize}
+
+\subsection{Magnitude and Distance Modulus}
+
+The pipeline injects sources into observed images, so \texttt{mag\_min} and \texttt{mag\_max} are apparent AB magnitudes. If a science case starts from absolute magnitudes, users should convert first:
+
+\begin{equation}
+    m = M + \mu + A_{\mathrm{band}},
+\end{equation}
+
+where $m$ is apparent magnitude, $M$ is absolute magnitude, $\mu$ is distance modulus, and $A_{\mathrm{band}}$ is band-specific extinction. The distance modulus is
+
+\begin{equation}
+    \mu = 5 \log_{10}\left(\frac{d}{10\,\mathrm{pc}}\right).
+\end{equation}
+
+For example, at $d=800{,}000$ pc, $\mu \approx 24.52$. An absolute magnitude range of $M=-6$ to $M=-2$ becomes an apparent magnitude range of approximately $m=18.52$ to $m=22.52$, before extinction.
+
+\section{Execution Modes}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lll}
+\toprule
+Mode & Best For & PSF Behavior \\
+\midrule
+Local array input & Development and unit tests & Analytic or fallback PSF \\
+TAP/local workflow & Lightweight Rubin-adjacent exploration & Metadata-driven fallback PSF \\
+RSP Butler workflow & Coadd-based Rubin science runs & Rubin-native CoaddPsf when available \\
+Batch workflow & Completeness campaigns & Shared PSF cache and checkpointing \\
+Multiband workflow & Color-aware recovery studies & Per-band image and PSF context \\
+\bottomrule
+\end{tabular}
+\caption{Common INJECT execution modes.}
+\end{table}
+
+\section{Detector Interface}
+
+The detector is intentionally user-supplied. A detector function should accept an injected image and return a list of detections. Each detection must include at least pixel coordinates:
+
+\begin{verbatim}
+def my_detector(image):
+    return [
+        {"x": 143.2, "y": 287.5},
+        {"x": 412.0, "y": 98.4, "snr": 5.4},
+    ]
+\end{verbatim}
+
+Optional fields such as magnitude, flux, half-light radius, signal-to-noise ratio, ellipticity, or quality flag enable richer recovery diagnostics.
+
+\section{Expected Outputs}
+
+Typical outputs include:
+
+\begin{itemize}[leftmargin=*]
+    \item injected truth catalogs
+    \item detection catalogs
+    \item match and retrieval summaries
+    \item completeness curves
+    \item two-dimensional completeness maps
+    \item per-iteration batch checkpoints
+    \item diagnostic plots and postage stamps
+\end{itemize}
+
+For reproducibility, each run should preserve the full configuration, random seed strategy, code version, detector version, and output directory layout.
+
+\section{Deployment and Documentation}
+
+The project documentation is built with MkDocs. The Read the Docs configuration is stored in \texttt{.readthedocs.yaml}; it builds \texttt{mkdocs.yml}, installs documentation requirements, installs package requirements, and installs the package itself. The Read the Docs site therefore deploys the MkDocs documentation under \texttt{site\_docs/} plus API pages generated through MkDocstrings.
+
+This Overleaf document is separate from the Read the Docs deployment. It is intended as a collaborator-facing science and methods summary. If a PDF version should be part of the public documentation site, export it from Overleaf and add it to \texttt{site\_docs/} as a static asset, then link it from the MkDocs navigation.
+
+\section{Recommended Reporting Checklist}
+
+For each science run, report:
+
+\begin{itemize}[leftmargin=*]
+    \item data source, Butler repo, collection, tract, patch, and band selection
+    \item cluster profile family and injection method
+    \item apparent magnitude range, and any distance modulus or extinction assumptions
+    \item half-light radius and concentration ranges
+    \item number of injections and number of repeated iterations
+    \item random seed strategy
+    \item PSF strategy, PSF cache settings, and PSF mask flag handling
+    \item detector function and detector parameters
+    \item matching radius and quality cuts
+    \item completeness binning and uncertainty estimates
+\end{itemize}
+
+\end{document}

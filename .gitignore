@@ -12,6 +12,7 @@ htmlcov/
 # Virtual environments
 .venv/
 .venv-release/
+.venv-canfar/
 venv/
 
 # Build artifacts
@@ -24,6 +25,7 @@ outputs/
 tap_injection_results/
 plots/
 canfar_outputs/
+logs/
 
 # Jupyter checkpoints
 .ipynb_checkpoints/

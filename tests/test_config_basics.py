@@ -20,6 +20,34 @@ def test_active_bands_prefers_multiband_configuration():
     assert config.active_bands == ["g", "r", "i"]
 
 
+def test_active_bands_supports_all_rubin_bands():
+    config = InjectionConfig(bands=["u", "g", "r", "i", "z", "y"])
+
+    assert config.active_bands == ["u", "g", "r", "i", "z", "y"]
+
+
+def test_active_bands_rejects_empty_band_list():
+    config = InjectionConfig(bands=[])
+
+    try:
+        config.active_bands
+    except ValueError as exc:
+        assert "at least one band" in str(exc)
+    else:
+        raise AssertionError("Accepted an empty band list.")
+
+
+def test_active_bands_rejects_unknown_band():
+    config = InjectionConfig(bands=["g", "not-a-band"])
+
+    try:
+        config.active_bands
+    except ValueError as exc:
+        assert "Unknown Rubin band" in str(exc)
+    else:
+        raise AssertionError("Accepted an unknown Rubin band.")
+
+
 def test_cluster_config_rejects_unknown_profile():
     try:
         ClusterConfig(profile_type="invalid-profile")

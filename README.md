@@ -149,6 +149,8 @@ injection-pipeline --help
 - `notebooks/archive/`: older exploratory notebooks kept for reference only
 - `configs/`: sample configs for local and batch runs
 - `site_docs/`: MkDocs documentation source
+- `overleaf/`: Overleaf-ready science and methods documentation
+- `scripts/canfar_*.py` and `scripts/canfar_*.sh`: CANFAR/HTCondor setup, task generation, submission, and batch runners
 
 ## Useful Commands
 

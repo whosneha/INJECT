@@ -84,6 +84,12 @@ mkdocs build
 injection-pipeline --version
 ```
 
+## Read The Docs Documentation
+
+Read the Docs is configured through `.readthedocs.yaml`. It builds `mkdocs.yml`, installs `docs_requirements.txt`, installs `requirements.txt`, and installs this package from the repository root.
+
+The deployed site is the MkDocs documentation under `site_docs/`, including generated API pages handled by MkDocstrings. Overleaf materials under `overleaf/` are not deployed to Read the Docs unless they are copied or exported into `site_docs/` and linked from the MkDocs navigation.
+
 ## External Steps Still Required
 
 - Actual Harbor push.

@@ -52,6 +52,16 @@ Once installed, notebook cells can import and call the package functions directl
 from inject import InjectionConfig, InjectionPipeline
 ```
 
+Band selection is controlled in `InjectionConfig`:
+
+```python
+single_band = InjectionConfig(band="i")
+three_bands = InjectionConfig(bands=["g", "r", "i"])
+all_bands = InjectionConfig(bands=["u", "g", "r", "i", "z", "y"])
+```
+
+Use one band for quick tests, a subset for matched-color workflows, or all six bands for full multiband completeness runs.
+
 For notebook output folders, prefer:
 
 ```python
