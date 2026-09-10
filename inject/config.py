@@ -14,6 +14,7 @@ Constants:
 """
 
 from dataclasses import dataclass, field
+import math
 from typing import Optional
 
 
@@ -27,9 +28,41 @@ DEFAULT_PSF_BAD_MASK_PLANES = (
 )
 
 
+def distance_modulus(distance_pc: float) -> float:
+    """Return distance modulus for a distance in parsecs."""
+    if distance_pc <= 0:
+        raise ValueError('distance_pc must be positive')
+
+    return 5.0 * math.log10(distance_pc / 10.0)
+
+
+def apparent_magnitude_from_absolute(
+    absolute_magnitude: float,
+    *,
+    distance_pc: Optional[float] = None,
+    distance_modulus_value: Optional[float] = None,
+    extinction: float = 0.0,
+) -> float:
+    """Convert absolute magnitude to apparent magnitude.
+
+    Provide either ``distance_pc`` or a precomputed ``distance_modulus_value``.
+    ``extinction`` is the band-specific extinction term to add, in magnitudes.
+    """
+    if (distance_pc is None) == (distance_modulus_value is None):
+        raise ValueError('provide exactly one of distance_pc or distance_modulus_value')
+
+    mu = distance_modulus(distance_pc) if distance_pc is not None else distance_modulus_value
+    return float(absolute_magnitude + mu + extinction)
+
+
 @dataclass
 class ClusterConfig:
-    """Configuration for cluster parameter space."""
+    """Configuration for cluster parameter space.
+
+    ``mag_min`` and ``mag_max`` are apparent AB magnitudes in the image band.
+    Use ``apparent_magnitude_from_absolute`` when starting from a physical
+    absolute-magnitude range and target distance.
+    """
     profile_type      : str   = 'king'    # king | plummer | eff | sersic
     method            : str   = 'smooth'  # smooth | discrete
     mag_min           : float = 20.0

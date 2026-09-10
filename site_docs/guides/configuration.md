@@ -12,7 +12,7 @@ The pipeline behavior is controlled through `InjectionConfig`, `ClusterConfig`, 
 ## Core Controls
 
 - Number of clusters per run.
-- Magnitude range and half-light radius range.
+- Apparent AB magnitude range and half-light radius range.
 - Profile type (`plummer`, `king`, `eff`, `sersic`).
 - Injection method (`smooth` or `discrete`).
 - Random seed for reproducibility.
@@ -41,6 +41,70 @@ config = InjectionConfig(
     ),
 )
 ```
+
+## Apparent Magnitudes And Distance Modulus
+
+`ClusterConfig.mag_min` and `ClusterConfig.mag_max` are apparent AB magnitudes in the image band. The pipeline injects sources into an observed image, so the injected flux is controlled by how bright the cluster appears to Rubin, not by its intrinsic absolute magnitude.
+
+Do not use a fixed distance modulus for all users. Choose one for the target system or science case, then convert physical absolute magnitudes into apparent magnitudes:
+
+$$
+m = M + \mu + A_\mathrm{band}
+$$
+
+where $M$ is absolute magnitude, $\mu$ is distance modulus, and $A_\mathrm{band}$ is optional band-specific extinction.
+
+The config still receives apparent magnitude values either way:
+
+| Starting point | What you put in `ClusterConfig` |
+| --- | --- |
+| You already know the observed brightness range to test | Put those apparent AB magnitudes directly into `mag_min` and `mag_max` |
+| You know the physical absolute-magnitude range and target distance | Convert first, then put the resulting apparent AB magnitudes into `mag_min` and `mag_max` |
+
+Direct apparent-magnitude setup:
+
+```python
+cluster_config = ClusterConfig(
+    profile_type="king",
+    mag_min=20.0,
+    mag_max=26.0,
+    r_half_min=2.0,
+    r_half_max=10.0,
+)
+```
+
+This injects clusters with observed magnitudes between 20 and 26 in the selected band.
+
+Distance-modulus setup:
+
+```python
+from inject import (
+    ClusterConfig,
+    InjectionConfig,
+    apparent_magnitude_from_absolute,
+    distance_modulus,
+)
+
+mu = distance_modulus(800_000)  # distance in parsecs
+
+cluster_config = ClusterConfig(
+    profile_type="king",
+    mag_min=apparent_magnitude_from_absolute(-6.0, distance_modulus_value=mu),
+    mag_max=apparent_magnitude_from_absolute(-2.0, distance_modulus_value=mu),
+    r_half_min=2.0,
+    r_half_max=10.0,
+)
+
+config = InjectionConfig(
+    run_name="m31_like_clusters",
+    band="i",
+    cluster_config=cluster_config,
+)
+```
+
+For `distance_pc=800_000`, `distance_modulus(800_000)` is about 24.52, so this is equivalent to an apparent-magnitude range of roughly 18.52 to 22.52 before extinction.
+
+For quick detector tests, it is fine to choose apparent magnitudes directly, such as `mag_min=20.0` and `mag_max=26.0`. For science runs tied to a specific galaxy, satellite, or distance bin, record the assumed distance modulus and extinction alongside the run configuration.
 
 ## YAML-Based Configuration
 

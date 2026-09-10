@@ -18,6 +18,8 @@ On RSP, the usual pattern is:
 
 For RSP terminal sessions, use `source ~/venvs/inject-rsp/bin/activate-rsp` so the Rubin stack and INJECT virtual environment are loaded together.
 
+For a clean reinstall or first-time setup checklist, see [Rubin Science Platform Venv](../getting-started/rsp-venv.md).
+
 Normal imports should look like:
 
 ```python

@@ -69,6 +69,8 @@ Use the project venv setup if you want an isolated INJECT environment and a name
 bash scripts/setup_rsp_env.sh
 ```
 
+The full clean-install and troubleshooting guide is in `site_docs/getting-started/rsp-venv.md`.
+
 Then use it like this:
 
 - Terminal use:

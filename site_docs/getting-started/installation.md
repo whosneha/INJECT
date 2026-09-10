@@ -62,6 +62,8 @@ Use this if you want an isolated INJECT environment and a named `Python (inject-
 bash scripts/setup_rsp_env.sh
 ```
 
+For a full clean-install walkthrough, including removing old kernels and verifying notebook imports, see [Rubin Science Platform Venv](rsp-venv.md).
+
 Then use it later with:
 
 - terminal: `source ~/venvs/inject-rsp/bin/activate-rsp`

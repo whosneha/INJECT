@@ -65,6 +65,7 @@ nav:
   - Home: index.md
   - Getting Started:
       - Installation: getting-started/installation.md
+      - RSP Venv: getting-started/rsp-venv.md
       - Quickstart: getting-started/quickstart.md
   - Guides:
       - Use Cases: guides/use-cases.md

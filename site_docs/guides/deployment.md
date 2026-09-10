@@ -46,6 +46,8 @@ From an RSP terminal in the cloned repository:
 bash scripts/setup_rsp_env.sh
 ```
 
+For a complete reset and reinstall procedure, see [Rubin Science Platform Venv](../getting-started/rsp-venv.md).
+
 The setup script:
 
 - loads the Rubin stack with `setup lsst_distrib`

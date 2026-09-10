@@ -14,6 +14,8 @@ __license__ = "MIT"
 _EXPORTS = {
     "ClusterConfig": ("inject.config", "ClusterConfig"),
     "InjectionConfig": ("inject.config", "InjectionConfig"),
+    "apparent_magnitude_from_absolute": ("inject.config", "apparent_magnitude_from_absolute"),
+    "distance_modulus": ("inject.config", "distance_modulus"),
     "KingProfile": ("inject.light_profiles", "KingProfile"),
     "PlummerProfile": ("inject.light_profiles", "PlummerProfile"),
     "EFFProfile": ("inject.light_profiles", "EFFProfile"),
