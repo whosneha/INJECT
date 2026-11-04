@@ -1,12 +1,91 @@
 import os
 import sys
 import unittest
+from types import SimpleNamespace
+from unittest.mock import Mock, call
 
 import numpy as np
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from inject.inject import inject_clusters_rubin_psf, inspect_psf_mask
+from inject.pipeline import InjectionPipeline
+
+
+class TestPipelineDataLoading(unittest.TestCase):
+    def test_butler_dataset_type_preserves_exposure_context(self):
+        for dataset_type, representation in (
+            (None, 'exposure'),
+            ('deep_coadd', 'exposure'),
+            ('deep_coadd', 'stitched'),
+            ('deep_coadd', 'cells'),
+            ('deep_coadd', 'modern_cells'),
+        ):
+            with self.subTest(dataset_type=dataset_type, representation=representation):
+                config = SimpleNamespace(active_bands=['i', 'r'], cutout_size=3)
+                image = np.arange(25).reshape(5, 5)
+                mask = np.zeros((5, 5), dtype=np.int32)
+                psf = object()
+                mask_planes = {'EDGE': 1}
+                exposure = SimpleNamespace(
+                    image=SimpleNamespace(array=image),
+                    mask=SimpleNamespace(array=mask, getMaskPlaneDict=lambda: mask_planes),
+                    getPsf=lambda: psf,
+                    getBBox=lambda: SimpleNamespace(getMinX=lambda: 100, getMinY=lambda: 200),
+                )
+                as_exposure = Mock(return_value=exposure)
+                stitched = SimpleNamespace(asExposure=as_exposure)
+                stitch = Mock(return_value=stitched)
+                to_legacy = Mock(return_value=exposure)
+                products = {
+                    'exposure': exposure,
+                    'stitched': stitched,
+                    'cells': SimpleNamespace(stitch=stitch),
+                    'modern_cells': SimpleNamespace(to_legacy=to_legacy),
+                }
+                butler = Mock()
+                butler.get.return_value = products[representation]
+                data_id = {'skymap': 'test', 'tract': 1, 'patch': 2}
+                options = {} if dataset_type is None else {'dataset_type': dataset_type}
+                pipe = InjectionPipeline(config)
+
+                pipe.load_data(butler=butler, data_id=data_id, **options)
+
+                self.assertEqual(butler.get.call_args_list, [
+                    call(dataset_type or 'deepCoadd', dataId={**data_id, 'band': band})
+                    for band in config.active_bands
+                ])
+                self.assertNotIn('band', data_id)
+                self.assertIs(pipe.image, pipe.images['i'])
+                self.assertEqual(stitch.call_count, 2 if representation == 'cells' else 0)
+                self.assertEqual(as_exposure.call_count, 2 if representation in ('stitched', 'cells') else 0)
+                self.assertEqual(to_legacy.call_args_list, [call(), call()] if representation == 'modern_cells' else [])
+                for band in config.active_bands:
+                    np.testing.assert_array_equal(pipe.images[band], image[:3, :3])
+                    np.testing.assert_array_equal(pipe.masks[band], mask[:3, :3])
+                    self.assertFalse(np.shares_memory(pipe.images[band], image))
+                    self.assertFalse(np.shares_memory(pipe.masks[band], mask))
+                    self.assertIs(pipe.psf_objs[band], psf)
+                    self.assertEqual(pipe.mask_plane_dicts[band], mask_planes)
+                    self.assertEqual(pipe.bboxes[band], (100, 200))
+
+    def test_butler_propagates_cell_coadd_conversion_failure(self):
+        pipe = InjectionPipeline(SimpleNamespace(active_bands=['i']))
+        to_legacy = Mock(side_effect=ValueError('conversion requires valid metadata'))
+        butler = Mock()
+        butler.get.return_value = SimpleNamespace(to_legacy=to_legacy)
+
+        with self.assertRaisesRegex(ValueError, 'conversion requires valid metadata'):
+            pipe.load_data(butler=butler, data_id={'tract': 1}, dataset_type='deep_coadd')
+        to_legacy.assert_called_once_with()
+
+    def test_butler_rejects_unsupported_coadd_type(self):
+        pipe = InjectionPipeline(SimpleNamespace(active_bands=['i']))
+        butler = Mock()
+        butler.get.return_value = object()
+
+        with self.assertRaisesRegex(TypeError, 'deep_coadd returned unsupported coadd type builtins.object'):
+            pipe.load_data(butler=butler, data_id={'tract': 1}, dataset_type='deep_coadd')
 
 
 class TestPsfMaskHandling(unittest.TestCase):

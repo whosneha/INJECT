@@ -80,9 +80,14 @@ class InjectionPipeline:
         self._catalog          = None
 
     # ------------------------------------------------------------------
-    def load_data(self, image=None, butler=None, data_id=None):
+    def load_data(self, image=None, butler=None, data_id=None, *, dataset_type='deepCoadd'):
         """
         Load image data.
+
+        dataset_type selects the Butler exposure product (for example,
+        'deep_coadd' for DP2); the default preserves older repositories.
+        Modern CellCoadd products use to_legacy(); older cell-based coadds
+        are stitched and converted to an exposure view.
 
         Single band (existing behaviour):
             pipe.load_data(image=BASE_IMAGE)
@@ -110,7 +115,18 @@ class InjectionPipeline:
 
             for band in self.config.active_bands:
                 bid   = {**data_id, 'band': band}
-                coadd = butler.get('deepCoadd', dataId=bid)
+                coadd = butler.get(dataset_type, dataId=bid)
+                if callable(getattr(coadd, 'to_legacy', None)):
+                    coadd = coadd.to_legacy()
+                if callable(getattr(coadd, 'stitch', None)):
+                    coadd = coadd.stitch()
+                if callable(getattr(coadd, 'asExposure', None)):
+                    coadd = coadd.asExposure()
+                if any(not hasattr(coadd, name) for name in ('image', 'mask', 'getPsf', 'getBBox')):
+                    raise TypeError(
+                        f'{dataset_type} returned unsupported coadd type '
+                        f'{type(coadd).__module__}.{type(coadd).__qualname__}'
+                    )
 
                 CUTOUT = self.config.cutout_size   # add this to InjectionConfig
                 self.images[band]   = coadd.image.array[:CUTOUT, :CUTOUT].copy()
