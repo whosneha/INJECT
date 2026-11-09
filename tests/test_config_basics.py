@@ -1,10 +1,13 @@
 """Lightweight unit tests that do not require the scientific stack."""
 
+import math
+
 from inject.config import (
     ClusterConfig,
     InjectionConfig,
     apparent_magnitude_from_absolute,
     distance_modulus,
+    physical_radius_to_pixels,
 )
 
 
@@ -78,3 +81,38 @@ def test_apparent_magnitude_from_absolute_requires_one_distance_input():
         assert "exactly one" in str(exc)
     else:
         raise AssertionError("Accepted missing distance information.")
+
+
+def test_physical_radius_to_pixels_uses_distance_and_pixel_scale():
+    from inject import physical_radius_to_pixels as public_conversion
+
+    radius = public_conversion(4.0, distance_pc=1_000_000, pixel_scale=0.2)
+
+    assert math.isclose(radius, 4.125296124941927, rel_tol=1e-12)
+    assert math.isclose(
+        physical_radius_to_pixels(4.0, distance_pc=1_000_000, pixel_scale=0.1),
+        2 * radius,
+    )
+
+
+def test_distance_changes_size_and_flux_consistently():
+    near_radius = physical_radius_to_pixels(4.0, distance_pc=1_000_000, pixel_scale=0.2)
+    far_radius = physical_radius_to_pixels(4.0, distance_pc=2_000_000, pixel_scale=0.2)
+    near_mag = apparent_magnitude_from_absolute(-7.5, distance_pc=1_000_000)
+    far_mag = apparent_magnitude_from_absolute(-7.5, distance_pc=2_000_000)
+
+    assert math.isclose(far_radius / near_radius, 0.5)
+    assert math.isclose(10 ** (-0.4 * (far_mag - near_mag)), 0.25)
+
+
+def test_physical_radius_to_pixels_rejects_nonpositive_or_nonfinite_inputs():
+    for name in ('radius_pc', 'distance_pc', 'pixel_scale'):
+        for value in (0.0, -1.0, float('nan'), float('inf')):
+            parameters = dict(radius_pc=4.0, distance_pc=1_000_000, pixel_scale=0.2)
+            parameters[name] = value
+            try:
+                physical_radius_to_pixels(**parameters)
+            except ValueError as exc:
+                assert name in str(exc)
+            else:
+                raise AssertionError(f'Accepted invalid {name}: {value}')

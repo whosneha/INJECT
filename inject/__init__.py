@@ -16,6 +16,7 @@ _EXPORTS = {
     "InjectionConfig": ("inject.config", "InjectionConfig"),
     "apparent_magnitude_from_absolute": ("inject.config", "apparent_magnitude_from_absolute"),
     "distance_modulus": ("inject.config", "distance_modulus"),
+    "physical_radius_to_pixels": ("inject.config", "physical_radius_to_pixels"),
     "KingProfile": ("inject.light_profiles", "KingProfile"),
     "PlummerProfile": ("inject.light_profiles", "PlummerProfile"),
     "EFFProfile": ("inject.light_profiles", "EFFProfile"),

@@ -57,6 +57,26 @@ def apparent_magnitude_from_absolute(
     return float(absolute_magnitude + mu + extinction)
 
 
+def physical_radius_to_pixels(
+    radius_pc: float,
+    *,
+    distance_pc: float,
+    pixel_scale: float,
+) -> float:
+    """Convert a physical radius to pixels using nearby-source small-angle geometry.
+
+    ``pixel_scale`` is in arcseconds per pixel. The radius is a scale parameter;
+    its interpretation as a half-light radius depends on the profile convention.
+    This does not model cosmological angular-diameter/luminosity distances.
+    """
+    for name, value in (
+        ('radius_pc', radius_pc), ('distance_pc', distance_pc), ('pixel_scale', pixel_scale),
+    ):
+        if not math.isfinite(value) or value <= 0:
+            raise ValueError(f'{name} must be finite and positive')
+    return math.degrees(radius_pc / distance_pc) * 3600.0 / pixel_scale
+
+
 @dataclass
 class ClusterConfig:
     """Configuration for cluster parameter space.
@@ -64,6 +84,8 @@ class ClusterConfig:
     ``mag_min`` and ``mag_max`` are apparent AB magnitudes in the image band.
     Use ``apparent_magnitude_from_absolute`` when starting from a physical
     absolute-magnitude range and target distance.
+    Use ``physical_radius_to_pixels`` to convert physical radius bounds at
+    that same distance and the science image's pixel scale.
     """
     profile_type      : str   = 'king'    # king | plummer | eff | sersic
     method            : str   = 'smooth'  # smooth | discrete
