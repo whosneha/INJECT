@@ -16,6 +16,16 @@ class ClusterRetrieval:
         self.detections     = detections
         self._matched       = None   # list[dict] -- matched injections
 
+    @classmethod
+    def from_matched(cls, injection_info):
+        """Combine already matched truth rows without cross-matching runs again."""
+        rows = list(injection_info)
+        if any(not isinstance(row.get('detected'), (bool, np.bool_)) for row in rows):
+            raise ValueError('Every row must have a boolean detected flag from matching.')
+        retrieval = cls(rows, [])
+        retrieval._matched = rows
+        return retrieval
+
     # ------------------------------------------------------------------
     def match_detections(self, match_radius=5.0):
         """
