@@ -1,8 +1,9 @@
 import os
 import sys
+import types
 import unittest
 from types import SimpleNamespace
-from unittest.mock import Mock, call
+from unittest.mock import Mock, call, patch
 
 import numpy as np
 
@@ -86,6 +87,120 @@ class TestPipelineDataLoading(unittest.TestCase):
 
         with self.assertRaisesRegex(TypeError, 'deep_coadd returned unsupported coadd type builtins.object'):
             pipe.load_data(butler=butler, data_id={'tract': 1}, dataset_type='deep_coadd')
+
+    def test_native_exposures_are_retained_only_for_requested_bands(self):
+        config = SimpleNamespace(active_bands=['g', 'r'], cutout_size=3)
+        exposures = {}
+        for band in config.active_bands:
+            image = np.zeros((5, 5), dtype=np.float32)
+            mask = np.zeros((5, 5), dtype=np.int32)
+            exposures[band] = SimpleNamespace(
+                image=SimpleNamespace(array=image),
+                variance=SimpleNamespace(array=image.copy()),
+                mask=SimpleNamespace(array=mask, getMaskPlaneDict=lambda: {}),
+                getPsf=lambda: object(),
+                getBBox=lambda: SimpleNamespace(getMinX=lambda: 0, getMinY=lambda: 0),
+            )
+        butler = Mock()
+        butler.get.side_effect = lambda _name, dataId: exposures[dataId['band']]
+        pipe = InjectionPipeline(config)
+
+        pipe.load_data(
+            butler=butler, data_id={'tract': 1}, dataset_type='deep_coadd',
+            native_bands=['r'],
+        )
+
+        self.assertEqual(pipe.native_exposures, {'r': exposures['r']})
+        self.assertEqual(set(pipe.images), {'g', 'r'})
+
+    def test_native_injection_updates_only_a_clone_and_returns_variance_and_mask(self):
+        class FakeExposure:
+            def __init__(self, image, variance, mask):
+                self.image = SimpleNamespace(array=image)
+                self.variance = SimpleNamespace(array=variance)
+                self.mask = SimpleNamespace(array=mask)
+
+            def clone(self):
+                return FakeExposure(
+                    self.image.array.copy(), self.variance.array.copy(), self.mask.array.copy(),
+                )
+
+            def getBBox(self):
+                return SimpleNamespace(getMinX=lambda: 10, getMinY=lambda: 20)
+
+            def getWcs(self):
+                return SimpleNamespace(pixelToSky=lambda point: ('sky', point.x, point.y))
+
+            def getPhotoCalib(self):
+                return SimpleNamespace(magnitudeToInstFlux=lambda magnitude, point: 123.0)
+
+        original_image = np.zeros((8, 8), dtype=np.float32)
+        original_variance = np.ones((8, 8), dtype=np.float32)
+        original_mask = np.zeros((8, 8), dtype=np.int32)
+        source = FakeExposure(original_image, original_variance, original_mask)
+
+        def fake_rubin_inject(exposure, objects, *, inject_variance, add_noise, noise_seed):
+            objects = list(objects)
+            self.assertTrue(inject_variance)
+            self.assertFalse(add_noise)
+            self.assertEqual(noise_seed, 17)
+            self.assertEqual(len(objects), 1)
+            exposure.image.array[3, 2] += 12
+            exposure.variance.array[3, 2] += 7
+            exposure.mask.array[3, 2] |= 1
+            return [5], [SimpleNamespace(area=lambda: 1)], [False], [False]
+
+        lsst_module = types.ModuleType('lsst')
+        lsst_module.__path__ = []
+        geom_module = types.ModuleType('lsst.geom')
+        geom_module.Point2D = lambda x, y: SimpleNamespace(x=x, y=y)
+        source_module = types.ModuleType('lsst.source')
+        source_module.__path__ = []
+        injection_module = types.ModuleType('lsst.source.injection')
+        injection_module.inject_galsim_objects_into_exposure = fake_rubin_inject
+        lsst_module.geom = geom_module
+        lsst_module.source = source_module
+        source_module.injection = injection_module
+
+        pipe = InjectionPipeline(SimpleNamespace(
+            active_bands=['g'], cutout_size=8, pixel_scale=0.2, zero_point=27.0,
+        ))
+        pipe.native_exposures = {'g': source}
+        pipe.images = {'g': original_image.copy()}
+        pipe.variances = {'g': original_variance.copy()}
+        catalog = [{
+            'id': 1, 'x': 2, 'y': 3, 'magnitude': 22.0, 'r_half': 2.0,
+            'concentration': 10.0, 'age_gyr': 1.0, 'profile_type': 'king',
+            'total_flux': 10.0, 'stamp_flux': 9.0, 'total_flux_injected': 8.0,
+            'stamp': np.ones((3, 3)),
+        }]
+
+        with patch.dict(sys.modules, {
+            'lsst': lsst_module,
+            'lsst.geom': geom_module,
+            'lsst.source': source_module,
+            'lsst.source.injection': injection_module,
+        }):
+            injected, info = pipe.inject_with_rubin(
+                catalog=catalog, band='g', add_noise=False, noise_seed=17,
+            )
+
+        np.testing.assert_array_equal(source.image.array, original_image)
+        np.testing.assert_array_equal(source.variance.array, original_variance)
+        np.testing.assert_array_equal(source.mask.array, original_mask)
+        self.assertEqual(injected[3, 2], 12)
+        self.assertEqual(pipe.injected_variance[3, 2], 8)
+        self.assertEqual(pipe.injected_mask[3, 2], 1)
+        self.assertEqual(pipe.native_variance_delta[3, 2], 7)
+        self.assertTrue(pipe.native_mask_changed[3, 2])
+        self.assertEqual(pipe.native_injection_summary, {'attempted': 1, 'injected': 1, 'skipped': 0})
+        self.assertIsNot(pipe.native_injected_exposures['g'], source)
+        self.assertEqual(info[0]['psf_used'], 'rubin_native')
+        self.assertTrue(info[0]['native_variance_injected'])
+        self.assertEqual(info[0]['total_flux'], 123.0)
+        self.assertNotIn('total_flux_injected', info[0])
+        self.assertNotIn('stamp_flux', info[0])
+        self.assertNotIn('stamp', info[0])
 
 
 class TestPsfMaskHandling(unittest.TestCase):

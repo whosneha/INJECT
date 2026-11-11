@@ -451,6 +451,9 @@ def inject_clusters_rubin_psf(image, catalog,
     -------
     injected_image : 2D ndarray  (same dtype as input)
     injection_info : list[dict]  -- one dict per successfully injected cluster
+        ``total_flux`` is the target flux, ``stamp_flux`` is the noisy full-stamp
+        sum, and ``total_flux_injected`` is the sum added after boundary clipping,
+        before conversion back to the input image dtype.
     timing         : dict          -- per-stage wall-clock seconds
     cache_stats    : dict or None  -- PSF cache statistics (if caching enabled)
     """
@@ -613,6 +616,7 @@ def inject_clusters_rubin_psf(image, catalog,
                 'stamp'       : stamp,
                 'stamp_flux'  : float(stamp.sum()),
                 'total_flux'  : total_flux,
+                'total_flux_injected': float(stamp[sy0:sy1, sx0:sx1].sum()),
                 'psf_fwhm_px' : fwhm_here,
                 'psf_used'    : psf_used,
             })

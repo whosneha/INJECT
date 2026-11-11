@@ -11,6 +11,7 @@ Run with: python tests/test_injection.py
 """
 
 import unittest
+from unittest.mock import patch
 import sys
 import os
 
@@ -111,6 +112,69 @@ class TestMagnitudeVariation(unittest.TestCase):
         p2 = PlummerProfile(r_half=10.0, age=1.0, magnitude=25.0)
         flux_ratio = p1.total_flux / p2.total_flux
         self.assertAlmostEqual(flux_ratio, 100.0, places=0)
+
+
+class TestInjectionSummary(unittest.TestCase):
+    def test_flux_plot_distinguishes_added_stamp_and_target_values(self):
+        from inject.visualization import plot_injection_summary
+
+        image = np.zeros((10, 10))
+        injection_info = [
+            dict(x=1, y=1, magnitude=20, r_half=2, total_flux=100,
+                 stamp_flux=90, total_flux_injected=80),
+            dict(x=2, y=2, magnitude=22, r_half=2, total_flux_injected=-2),
+            dict(x=3, y=3, magnitude=23, r_half=2, total_flux=6, stamp_flux=5),
+            dict(x=4, y=4, magnitude=24, r_half=2, total_flux=2),
+            dict(x=5, y=5, magnitude=25, r_half=2),
+        ]
+        try:
+            with patch.object(plt, 'show'):
+                plot_injection_summary(image, image + 1, injection_info)
+            axis = plt.gcf().axes[5]
+            self.assertEqual(axis.get_yscale(), 'symlog')
+            self.assertEqual([group.get_label() for group in axis.collections],
+                             ['Added to image', 'Stamp before clipping', 'Target flux'])
+            np.testing.assert_allclose(axis.collections[0].get_offsets(), [[20, 80], [22, -2]])
+            np.testing.assert_allclose(axis.collections[1].get_offsets(), [[23, 5]])
+            np.testing.assert_allclose(axis.collections[2].get_offsets(), [[24, 2]])
+        finally:
+            plt.close('all')
+
+    def test_pipeline_records_noisy_and_clipped_flux_added_to_image(self):
+        from inject import InjectionConfig, InjectionPipeline
+
+        catalog = [
+            dict(x=0, y=0, magnitude=22, r_half=3, profile_type='plummer'),
+            dict(x=70, y=70, magnitude=23, r_half=3, profile_type='plummer'),
+        ]
+        for add_noise in (False, True):
+            with self.subTest(add_noise=add_noise):
+                image = np.zeros((101, 101), dtype=np.float64)
+                config = InjectionConfig(use_actual_psf=False, add_noise=add_noise)
+                pipe = InjectionPipeline(config)
+                pipe.load_data(image=image)
+                injected, info = pipe.inject(catalog=catalog, drop_stamps=False, verbose=False)
+                self.assertEqual(len(info), len(catalog))
+                self.assertAlmostEqual(sum(row['total_flux_injected'] for row in info),
+                                       (injected - image).sum(), places=8)
+                if not add_noise:
+                    self.assertLess(info[0]['total_flux_injected'], info[0]['stamp_flux'])
+                plotted = []
+
+                def capture_plot():
+                    plotted.append(plt.gcf().axes[5].collections[0].get_offsets().copy())
+
+                try:
+                    with patch.object(plt, 'show', side_effect=capture_plot):
+                        pipe.make_plots(plots=['injection_summary'], show=True,
+                                        save=False, n_stamps=0)
+                    self.assertEqual(len(plotted), 1)
+                    np.testing.assert_allclose(
+                        plotted[0],
+                        [[row['magnitude'], row['total_flux_injected']] for row in info],
+                    )
+                finally:
+                    plt.close('all')
 
 
 # =============================================================================

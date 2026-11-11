@@ -78,9 +78,12 @@ class InjectionPipeline:
         self.detection_catalog = []
         self.retrieval         = None
         self._catalog          = None
+        self.native_exposures = {}
+        self.native_injected_exposures = {}
 
     # ------------------------------------------------------------------
-    def load_data(self, image=None, butler=None, data_id=None, *, dataset_type='deepCoadd'):
+    def load_data(self, image=None, butler=None, data_id=None, *, dataset_type='deepCoadd',
+                  native_bands=None):
         """
         Load image data.
 
@@ -88,6 +91,8 @@ class InjectionPipeline:
         'deep_coadd' for DP2); the default preserves older repositories.
         Modern CellCoadd products use to_legacy(); older cell-based coadds
         are stitched and converted to an exposure view.
+        Butler products are retained for native variance-aware injection only
+        for bands explicitly listed in native_bands.
 
         Single band (existing behaviour):
             pipe.load_data(image=BASE_IMAGE)
@@ -104,18 +109,27 @@ class InjectionPipeline:
             self.psf_objs  = {}
             self.masks     = {}
             self.mask_plane_dicts = {}
+            self.variances = {}
+            self.native_exposures = {}
+            self.native_injected_exposures = {}
             return
 
         if butler is not None and data_id is not None:
+            native_bands = set(native_bands or ())
             self.images   = {}
             self.psf_objs = {}
             self.bboxes   = {}
             self.masks    = {}
             self.mask_plane_dicts = {}
+            self.variances = {}
+            self.native_exposures = {}
+            self.native_injected_exposures = {}
 
             for band in self.config.active_bands:
                 bid   = {**data_id, 'band': band}
                 coadd = butler.get(dataset_type, dataId=bid)
+                if band in native_bands:
+                    self.native_exposures[band] = coadd
                 if callable(getattr(coadd, 'to_legacy', None)):
                     coadd = coadd.to_legacy()
                 if callable(getattr(coadd, 'stitch', None)):
@@ -132,6 +146,8 @@ class InjectionPipeline:
                 self.images[band]   = coadd.image.array[:CUTOUT, :CUTOUT].copy()
                 self.psf_objs[band] = coadd.getPsf()
                 self.masks[band]    = coadd.mask.array[:CUTOUT, :CUTOUT].copy()
+                if hasattr(coadd, 'variance'):
+                    self.variances[band] = coadd.variance.array[:CUTOUT, :CUTOUT].copy()
                 self.mask_plane_dicts[band] = dict(coadd.mask.getMaskPlaneDict())
                 bbox                = coadd.getBBox()
                 self.bboxes[band]   = (bbox.getMinX(), bbox.getMinY())
@@ -143,6 +159,103 @@ class InjectionPipeline:
             return
 
         raise ValueError('Provide either image= or butler= + data_id=')
+
+
+    def inject_with_rubin(self, catalog=None, band=None, *, add_noise=False, noise_seed=42):
+        """Inject into a cloned Rubin product and keep its updated variance and mask."""
+        import galsim
+        from lsst.geom import Point2D
+        from lsst.source.injection import inject_galsim_objects_into_exposure
+        from .inject import make_profile_image
+
+        if not self.native_exposures:
+            raise RuntimeError('Load Butler data before requesting native Rubin injection.')
+        active_band = band or self.config.active_bands[0]
+        if active_band not in self.native_exposures:
+            raise ValueError(f'No retained Butler exposure for band {active_band!r}.')
+        if active_band not in getattr(self, 'variances', {}):
+            raise RuntimeError(f'No original variance plane is available for band {active_band!r}.')
+        source = self.native_exposures[active_band]
+
+        if callable(getattr(source, 'clone', None)):
+            target = source.clone()
+        elif callable(getattr(source, 'copy', None)):
+            target = source.copy()
+        elif callable(getattr(source, 'stitch', None)):
+            target = source.stitch().asExposure().clone()
+        else:
+            raise TypeError(f'Cannot safely clone native product {type(source).__name__}.')
+
+        if callable(getattr(target, 'getBBox', None)):
+            bbox = target.getBBox()
+            wcs = target.getWcs()
+            photo_calib = target.getPhotoCalib()
+        else:
+            bbox = target.bbox.to_legacy()
+            wcs = target.sky_projection.to_legacy()
+            photo_calib = target.to_legacy().getPhotoCalib()
+
+        if catalog is None:
+            self.image = self.images[active_band]
+            catalog = self.generate_catalog()
+        objects = []
+        target_fluxes = []
+        for entry in catalog:
+            pixel = Point2D(bbox.getMinX() + entry['x'], bbox.getMinY() + entry['y'])
+            sky = wcs.pixelToSky(pixel)
+            profile, _ = make_profile_image(
+                entry, pixel_scale=self.config.pixel_scale, zero_point=self.config.zero_point,
+            )
+            source_object = galsim.InterpolatedImage(
+                galsim.Image(profile, scale=self.config.pixel_scale), normalization='flux',
+            )
+            inst_flux = float(photo_calib.magnitudeToInstFlux(entry['magnitude'], pixel))
+            objects.append((sky, pixel, 0, source_object.withFlux(inst_flux)))
+            target_fluxes.append(inst_flux)
+
+        draw_sizes, bounds, fft_errors, psf_errors = inject_galsim_objects_into_exposure(
+            target, iter(objects), inject_variance=True, add_noise=add_noise,
+            noise_seed=noise_seed,
+        )
+        successful = []
+        for entry, target_flux, draw_size, common_bounds, fft_error, psf_error in zip(
+            catalog, target_fluxes, draw_sizes, bounds, fft_errors, psf_errors, strict=True,
+        ):
+            if common_bounds.area() == 0 or fft_error or psf_error:
+                continue
+            row = dict(entry)
+            for key in ('stamp', 'stamp_flux', 'total_flux_injected'):
+                row.pop(key, None)
+            row.update(
+                total_flux=target_flux,
+                psf_used='rubin_native', psf_fwhm_px=np.nan,
+                native_draw_size=int(draw_size),
+                native_variance_injected=True, native_noise_added=bool(add_noise),
+                detected=False,
+            )
+            successful.append(row)
+
+        if not successful:
+            raise RuntimeError('Rubin native injection did not inject any sources.')
+
+        self.image = self.images[active_band]
+        self.injected_image = target.image.array[:self.config.cutout_size, :self.config.cutout_size].copy()
+        self.injected_variance = target.variance.array[:self.config.cutout_size, :self.config.cutout_size].copy()
+        self.injected_mask = target.mask.array[:self.config.cutout_size, :self.config.cutout_size].copy()
+        original_variance = self.variances[active_band]
+        self.native_variance_delta = self.injected_variance - original_variance
+        self.native_mask_changed = (
+            self.injected_mask != source.mask.array[:self.config.cutout_size, :self.config.cutout_size]
+        )
+        self.native_injection_summary = {
+            'attempted': len(catalog),
+            'injected': len(successful),
+            'skipped': len(catalog) - len(successful),
+        }
+        self.native_injected_exposures[active_band] = target
+        self.injection_info = successful
+        self._catalog = catalog
+        return self.injected_image, self.injection_info
 
 
     def run_batch_multiband(self, n_iterations, n_per_iter,
@@ -638,7 +751,7 @@ class InjectionPipeline:
         return detections
 
     # ------------------------------------------------------------------
-    def analyze(self, detections=None, match_radius=5.0):
+    def analyze(self, detections=None, match_radius=5.0, baseline_detections=None):
         """
         Match detections back to injections and return summary statistics.
         """
@@ -651,7 +764,9 @@ class InjectionPipeline:
             raise RuntimeError('No injections available. Run inject() first.')
 
         self.retrieval = ClusterRetrieval(self.injection_info, self.detection_catalog)
-        self.retrieval.match_detections(match_radius=match_radius)
+        self.retrieval.match_detections(
+            match_radius=match_radius, baseline_detections=baseline_detections,
+        )
         return self.retrieval.get_summary_statistics()
 
     # ------------------------------------------------------------------

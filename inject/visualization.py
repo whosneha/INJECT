@@ -198,7 +198,8 @@ def plot_injection_summary(image, injected_image, injection_info, save_path=None
     injected_image : ndarray
         Image with injections
     injection_info : list of dict
-        Injection catalog with results
+        Injection catalog with results. Flux points use the added flux when
+        available, otherwise the pre-clipping stamp or target flux, as labeled.
     save_path : str, optional
         Path to save figure
     show : bool
@@ -246,10 +247,30 @@ def plot_injection_summary(image, injected_image, injection_info, save_path=None
     
     # Flux injected
     ax = axes[1, 2]
-    fluxes = [info.get('total_flux_injected', 0) for info in injection_info]
-    ax.scatter(mags, np.log10(np.array(fluxes) + 1), alpha=0.7)
+    flux_fields = (
+        ('total_flux_injected', 'Added to image'),
+        ('stamp_flux', 'Stamp before clipping'),
+        ('total_flux', 'Target flux'),
+    )
+    flux_groups = {label: [] for _, label in flux_fields}
+    for info in injection_info:
+        for field, label in flux_fields:
+            flux = info.get(field)
+            if flux is not None and np.isfinite(flux):
+                flux_groups[label].append((info['magnitude'], flux))
+                break
+    for label, points in flux_groups.items():
+        if points:
+            magnitudes, fluxes = zip(*points)
+            ax.scatter(magnitudes, fluxes, alpha=0.7, label=label)
+    if any(flux_groups.values()):
+        ax.legend()
+    else:
+        ax.text(0.5, 0.5, 'Flux unavailable', ha='center', va='center',
+                transform=ax.transAxes)
+    ax.set_yscale('symlog', linthresh=1)
     ax.set_xlabel('Magnitude')
-    ax.set_ylabel('log10(Flux Injected)')
+    ax.set_ylabel('Flux (image units)')
     ax.set_title('Flux vs Magnitude')
     
     for ax in axes.flat:

@@ -30,6 +30,7 @@ def plot_position_map(matched, image,
                       title       = None,
                       det_color   = 'lime',
                       miss_color  = 'red',
+                    confounded_color = 'orange',
                       marker_size = 3,
                       alpha       = 0.6,
                       figsize     = (9, 9),
@@ -62,18 +63,26 @@ def plot_position_map(matched, image,
               vmax=np.percentile(image, pct_hi))
 
     for entry in matched:
-        color = det_color if entry.get('detected', False) else miss_color
+        if entry.get('background_confounded', False):
+            color = confounded_color
+        else:
+            color = det_color if entry.get('detected', False) else miss_color
         ax.plot(entry['x'], entry['y'], 'o',
                 ms=marker_size, mec=color, mfc='none',
                 mew=0.6, alpha=alpha)
 
     n_det = sum(1 for e in matched if e.get('detected', False))
     n_inj = len(matched)
+    n_confounded = sum(1 for e in matched if e.get('background_confounded', False))
+    n_missed = n_inj - n_det - n_confounded
 
     ax.scatter([], [], marker='o', edgecolors=det_color,
                facecolors='none', label=f'Detected ({n_det})')
     ax.scatter([], [], marker='o', edgecolors=miss_color,
-               facecolors='none', label=f'Missed ({n_inj - n_det})')
+               facecolors='none', label=f'Missed ({n_missed})')
+    if n_confounded:
+        ax.scatter([], [], marker='o', edgecolors=confounded_color,
+                   facecolors='none', label=f'Background-confounded ({n_confounded})')
     ax.legend(loc='upper right', fontsize=9)
     ax.axis('off')
 
@@ -122,7 +131,7 @@ def plot_completeness_1d(retrieval, config,
 
     # ---- Magnitude (blocky step + 1-sigma band) ----
     axes[0].step(bc_mag, comp_mag, where='mid', color=color_mag, lw=2,
-                 label='Completeness')
+                 label='Clean completeness')
     axes[0].fill_between(bc_mag, np.clip(comp_mag - err_mag, 0, 1),
                          np.clip(comp_mag + err_mag, 0, 1),
                          step='mid', alpha=0.25, color=color_mag,
@@ -133,17 +142,17 @@ def plot_completeness_1d(retrieval, config,
         axes[0].axvline(stats['mag_50_limit'], color='red', ls='--', lw=1,
                         label=f"50% limit = {stats['mag_50_limit']:.2f} mag")
     axes[0].set_xlabel('Injected magnitude (AB)')
-    axes[0].set_ylabel('Completeness')
+    axes[0].set_ylabel('Clean completeness')
     axes[0].set_ylim(0, 1.05)
-    axes[0].set_title(f"Completeness vs Magnitude\n"
-                      f"({stats['n_injected']} clusters, "
-                      f"overall {stats['overall_completeness']:.1%})")
+    axes[0].set_title(f"Clean completeness vs Magnitude\n"
+                      f"({stats['n_clean_eligible']} clean-eligible clusters, "
+                      f"{stats['n_background_confounded']} background-confounded)")
     axes[0].legend(loc='lower left')
 
     # ---- Half-light radius (blocky step + 1-sigma band) ----
     ax2 = axes[1]
     ax2.step(bc_rh, comp_rh, where='mid', color=color_rh, lw=2,
-             label='Completeness')
+             label='Clean completeness')
     ax2.fill_between(bc_rh, np.clip(comp_rh - err_rh, 0, 1),
                      np.clip(comp_rh + err_rh, 0, 1),
                      step='mid', alpha=0.25, color=color_rh,
@@ -155,9 +164,9 @@ def plot_completeness_1d(retrieval, config,
                     label=f"50% limit = {stats['r_half_50_limit']:.2f} px\n"
                           f"= {stats['r_half_50_limit'] * pixel_scale:.2f} arcsec")
     ax2.set_xlabel('Half-light radius (px)')
-    ax2.set_ylabel('Completeness')
+    ax2.set_ylabel('Clean completeness')
     ax2.set_ylim(0, 1.05)
-    ax2.set_title('Completeness vs Half-light radius')
+    ax2.set_title('Clean completeness vs Half-light radius')
     ax2.legend(loc='lower left')
 
     plt.tight_layout()
@@ -203,12 +212,12 @@ def plot_completeness_2d(retrieval, config,
     im = ax.pcolormesh(result['bin_centers1'], result['bin_centers2'],
                        result['completeness'].T,
                        cmap=cmap, vmin=0, vmax=1)
-    plt.colorbar(im, ax=ax, label='Completeness')
+    plt.colorbar(im, ax=ax, label='Clean completeness')
 
     if annotate:
         for i in range(result['n_injected'].shape[0]):
             for j in range(result['n_injected'].shape[1]):
-                n = result['n_injected'][i, j]
+                n = result['n_eligible'][i, j]
                 if n > 0:
                     ax.text(result['bin_centers1'][i],
                             result['bin_centers2'][j],
@@ -220,8 +229,9 @@ def plot_completeness_2d(retrieval, config,
 
     if title is None:
         stats = retrieval.get_summary_statistics()
-        title = (f'2D Completeness Map\n'
-                 f'({stats["n_injected"]} total injections)')
+        title = (f'2D Clean Completeness Map\n'
+             f'({stats["n_clean_eligible"]} eligible, '
+             f'{stats["n_background_confounded"]} confounded)')
     ax.set_title(title)
 
     plt.tight_layout()
@@ -435,16 +445,22 @@ def plot_injection_summary(retrieval, config, iterations,
                   vmin=np.percentile(base_image, 1),
                   vmax=np.percentile(base_image, 99))
     for entry in retrieval._matched:
-        color = 'lime' if entry.get('detected', False) else 'red'
+        if entry.get('background_confounded', False):
+            color = 'orange'
+        else:
+            color = 'lime' if entry.get('detected', False) else 'red'
         ax_pos.plot(entry['x'], entry['y'], 'o',
                     ms=2, mec=color, mfc='none', mew=0.5, alpha=0.5)
     ax_pos.scatter([], [], marker='o', edgecolors='lime',
                    facecolors='none', label='Detected', s=15)
     ax_pos.scatter([], [], marker='o', edgecolors='red',
                    facecolors='none', label='Missed', s=15)
+    if stats['n_background_confounded']:
+        ax_pos.scatter([], [], marker='o', edgecolors='orange',
+                       facecolors='none', label='Background-confounded', s=15)
     ax_pos.legend(loc='upper right', fontsize=7)
     ax_pos.axis('off')
-    ax_pos.set_title(f'Positions — {stats["overall_completeness"]:.1%} recovered',
+    ax_pos.set_title(f'Positions — {stats["clean_completeness"]:.1%} clean completeness',
                      fontsize=10)
 
     # ---- Top right: 2D completeness map ----
@@ -457,10 +473,10 @@ def plot_injection_summary(retrieval, config, iterations,
     im = ax_2d.pcolormesh(result['bin_centers1'], result['bin_centers2'],
                           result['completeness'].T,
                           cmap='RdYlGn', vmin=0, vmax=1)
-    plt.colorbar(im, ax=ax_2d, label='Completeness')
+    plt.colorbar(im, ax=ax_2d, label='Clean completeness')
     ax_2d.set_xlabel('Magnitude (AB)', fontsize=9)
     ax_2d.set_ylabel('r_half (px)', fontsize=9)
-    ax_2d.set_title('2D Completeness Map', fontsize=10)
+    ax_2d.set_title('2D Clean Completeness Map', fontsize=10)
 
     # ---- Bottom left: completeness vs magnitude ----
     ax_mag = fig.add_subplot(gs[1, 0])
@@ -472,9 +488,9 @@ def plot_injection_summary(retrieval, config, iterations,
     ax_mag.axvline(stats['mag_50_limit'], color='red', ls='--', lw=1,
                    label=f"50% = {stats['mag_50_limit']:.2f}")
     ax_mag.set_xlabel('Magnitude (AB)', fontsize=9)
-    ax_mag.set_ylabel('Completeness', fontsize=9)
+    ax_mag.set_ylabel('Clean completeness', fontsize=9)
     ax_mag.set_ylim(0, 1.05)
-    ax_mag.set_title('Completeness vs Magnitude', fontsize=10)
+    ax_mag.set_title('Clean completeness vs Magnitude', fontsize=10)
     ax_mag.legend(fontsize=8)
 
     # ---- Bottom right: completeness vs r_half ----
@@ -489,16 +505,17 @@ def plot_injection_summary(retrieval, config, iterations,
                   label=f"50% = {stats['r_half_50_limit']:.2f} px\n"
                         f"= {stats['r_half_50_limit'] * pixel_scale:.2f}\"")
     ax_rh.set_xlabel('Half-light radius (px)', fontsize=9)
-    ax_rh.set_ylabel('Completeness', fontsize=9)
+    ax_rh.set_ylabel('Clean completeness', fontsize=9)
     ax_rh.set_ylim(0, 1.05)
-    ax_rh.set_title('Completeness vs r_half', fontsize=10)
+    ax_rh.set_title('Clean completeness vs r_half', fontsize=10)
     ax_rh.legend(fontsize=8)
 
     fig.suptitle(
         f'Injection-Recovery Summary — {config.run_name}\n'
         f'{stats["n_injected"]} injections · '
         f'{len(iterations)} iterations · '
-        f'{stats["overall_completeness"]:.1%} overall completeness',
+        f'{stats["clean_completeness"]:.1%} clean completeness · '
+        f'{stats["n_background_confounded"]} background-confounded',
         fontsize=12, y=1.01
     )
 
